@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import path from 'node:path'
+import path, { join } from 'node:path'
 import os from 'node:os'
 import { update } from './update'
 
@@ -23,7 +23,7 @@ process.env.APP_ROOT = path.join(__dirname, '../..')
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
-
+const workerUrl = `${VITE_DEV_SERVER_URL}/workerRenderer.html`
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST
@@ -42,6 +42,7 @@ if (!app.requestSingleInstanceLock()) {
 let win: BrowserWindow | null = null
 const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
+const workerHtml = path.join(RENDERER_DIST, 'workerRenderer.html')
 
 async function createWindow() {
   win = new BrowserWindow({
@@ -81,7 +82,32 @@ async function createWindow() {
   update(win)
 }
 
-app.whenReady().then(createWindow)
+const createInvisWindow = () => {
+  let invisWindow = new BrowserWindow({
+    // show: !app.isPackaged,
+    show: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+  if (VITE_DEV_SERVER_URL) {
+    invisWindow.loadURL(workerUrl)
+    //react dev tools does not appreciate other windows having dev tools open
+    invisWindow.webContents.openDevTools()
+  } else {
+    invisWindow.loadFile(workerHtml)
+  }
+  // invisWindow.webContents.once('did-finish-load', () => {
+  //   invisWindow.webContents.send('startLoad', { start: start, range: range, files: files, appDataPath: appDataPath })
+  // })
+}
+ipcMain.handle('poop', () => {
+  console.log('main poop')
+})
+app.whenReady().then(() => {
+  createWindow()
+  createInvisWindow()})
 
 app.on('window-all-closed', () => {
   win = null
