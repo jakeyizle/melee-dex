@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import {
   Typography,
   Container,
@@ -12,14 +12,10 @@ import {
   FormControl,
   FormLabel,
   InputAdornment,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  FormHelperText,
 } from "@mui/material"
 import FolderOpenIcon from "@mui/icons-material/FolderOpen"
 import {useNavigate } from "react-router-dom"
-import { getSettings, setSetting } from "../db/settings"
+import { selectAllSettings, upsertSettings } from "../db/settings"
 
 
 export const SettingsPage = () => {
@@ -27,14 +23,12 @@ export const SettingsPage = () => {
   const [replayDirectory, setReplayDirectory] = useState<string>("")
   const [username, setUsername] = useState<string>("")
   const [directoryErrorText, setDirectoryErrorText] = useState<string>("")
-  const [isFastLoad, setIsFastLoad] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchSettings = async () => {
-        const {replayDirectory, username, isFastLoad} = await getSettings();
+        const {replayDirectory, username} = await selectAllSettings();
         setReplayDirectory(replayDirectory);
         setUsername(username);
-        setIsFastLoad(isFastLoad === "true");
     }
     fetchSettings();
 }, [])
@@ -54,9 +48,7 @@ export const SettingsPage = () => {
     }
     setReplayDirectory(replayDirectory);
     setUsername(username);
-    setSetting("replayDirectory", replayDirectory);
-    setSetting("username", username);
-    setSetting("isFastLoad", isFastLoad.toString());
+    upsertSettings([{"key": "replayDirectory", "value": replayDirectory}, {"key": "username", "value": username}]);    
     navigate("/");
   }
 
@@ -103,7 +95,7 @@ export const SettingsPage = () => {
                 </Typography>
               </Box>
 
-              <Box sx={{ mb: 3 }}>
+              <Box>
                 <FormControl fullWidth sx={{ mb: 1 }}>
                   <FormLabel sx={{ mb: 1, fontWeight: 500 }}>Your Connect Code</FormLabel>
                   <TextField
@@ -116,21 +108,6 @@ export const SettingsPage = () => {
                 <Typography variant="body2" color="text.secondary">
                   Your connect code helps identify which player is you in the stats (optional)
                 </Typography>
-              </Box>
-
-              <Box>
-                <FormControl fullWidth sx={{ mb: 1 }}>
-                  <FormLabel sx={{ mb: 1, fontWeight: 500 }}>Fast Load Replays</FormLabel>
-                  <RadioGroup
-                    row
-                    value={isFastLoad}
-                    onChange={(e) => setIsFastLoad(e.target.value === "true")}
-                  >
-                    <FormControlLabel value={true} control={<Radio />} label="Enabled" />
-                    <FormControlLabel value={false} control={<Radio />} label="Disabled" />
-                  </RadioGroup>
-                  <FormHelperText>Fast Load is significantly faster, but uses a lot of resources</FormHelperText>
-                </FormControl>
               </Box>
             </CardContent>
             <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>

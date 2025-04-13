@@ -14,7 +14,7 @@ export type Replay = {
     winnerConnectCode: string;
 }
 
-export const getReplayNames = async () => {
+export const selectAllReplayNames = async () => {
     const badNames = await badReplaysStore.keys();
     const goodNames = await replaysStore.keys();
     return [...goodNames, ...badNames];

@@ -10,23 +10,23 @@ import { CurrentMatchCard } from "./CurrentMatchCard"
 import { PlayerStatsCard } from "./PlayerStatsCard"
 import { RecentMatchesCard } from "./RecentMatchesCard"
 import { useEffect, useState } from "react"
-import { getSettings } from "@/db/settings"
-import { getReplayNames } from "@/db/replays"
-import { ReplayLoadProgressBar } from "./ReplayLoadProgressBar"
+import { selectAllSettings } from "@/db/settings"
+import { selectAllReplayNames } from "@/db/replays"
+import { ReplayInfoDisplay } from "./ReplayInfoDisplay"
 
 export const LiveMatchDisplay = () => {
   const [hasReplayDirectory, setHasReplayDirectory] = useState(true)
   const [currentReplaysLoaded, setCurrentReplaysLoaded] = useState(0);
-  const [totalReplaysToLoad, setTotalReplaysToLoad] = useState(1);
+  const [totalReplaysToLoad, setTotalReplaysToLoad] = useState(0);
   const [isLoadingReplays, setIsLoadingReplays] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
-        const {replayDirectory, isFastLoad} = await getSettings();
+        const {replayDirectory} = await selectAllSettings();
         setHasReplayDirectory(!!replayDirectory);
         if (!!replayDirectory) {
-          const existingReplayNames = await getReplayNames();
-          window.ipcRenderer.invoke('begin-loading-replays', { replayDirectory: replayDirectory, existingReplayNames, isFastLoad });
+          const existingReplayNames = await selectAllReplayNames();
+          window.ipcRenderer.invoke('begin-loading-replays', { replayDirectory: replayDirectory, existingReplayNames });
           setIsLoadingReplays(true);
         }
     }
@@ -34,13 +34,16 @@ export const LiveMatchDisplay = () => {
   }, [])
 
 useEffect(() => {
-  const updateReplayLoadProgress = (_event: any, args: any) => {
+  const updateReplayLoadProgress = (_event: any, args: {currentReplaysLoaded: number, totalReplaysToLoad: number}) => {
     const { currentReplaysLoaded, totalReplaysToLoad } = args;
     setCurrentReplaysLoaded(currentReplaysLoaded);
     setTotalReplaysToLoad(totalReplaysToLoad);
   }
 
-  const endLoadingReplays = () => {
+  const endLoadingReplays = (_event: any, args: {totalReplays: number}) => {
+    const { totalReplays } = args;
+    setTotalReplaysToLoad(totalReplays);
+    setCurrentReplaysLoaded(0);
     setIsLoadingReplays(false);
   }
 
@@ -55,11 +58,7 @@ useEffect(() => {
 return (
     <Container component="main" sx={{ py: 3, flex: 1 }}>
       {!hasReplayDirectory && <Alert severity="error">Replay directory must be set in settings.</Alert>}
-      {isLoadingReplays && (
-        <Box sx={{width: '100%'}}>
-          <ReplayLoadProgressBar value={(currentReplaysLoaded / totalReplaysToLoad) * 100} />
-        </Box>
-      )}
+      <ReplayInfoDisplay currentCount={currentReplaysLoaded} totalCount={totalReplaysToLoad} isLoadInProgress={isLoadingReplays} />
       <Stack spacing={3}>
         <DashboardHeader />
 

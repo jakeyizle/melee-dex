@@ -52,15 +52,6 @@ export const getNumberOfRenderers = (numberOfReplays: number, isFastLoad: boolea
     return numRenderers
 }
 
-export const splitReplaysIntoChunks = (replayFiles: ReplayFile[], numberOfChunks: number) => {
-    const chunkSize = Math.ceil(replayFiles.length / numberOfChunks);
-    const chunks = [];
-    for (let i = 0; i < replayFiles.length; i += chunkSize) {
-        chunks.push(replayFiles.slice(i, i + chunkSize));
-    }
-    return chunks;
-}
-
 export const createInvisWindow = (files: ReplayFile[]) => {
     let invisWindow = new BrowserWindow({
       show: !app.isPackaged,
