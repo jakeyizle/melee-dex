@@ -28,6 +28,8 @@ ipcRenderer.on('start-load', async (event, args) => {
                 characterId: (settings.players[1].characterId || 0).toString()
             }
 
+            const stageId = settings.stageId
+
             const winnerIndex =winners[0].playerIndex
             const winnerCode = settings.players[winnerIndex].connectCode
             const replay: Replay = {
@@ -35,7 +37,8 @@ ipcRenderer.on('start-load', async (event, args) => {
                 path: file.path,
                 date: metadata.startAt,
                 players: [playerOne, playerTwo],
-                winnerConnectCode: winnerCode
+                winnerConnectCode: winnerCode,
+                stageId: stageId?.toString() || '',
         }
         if (isReplayValid(replay)) {            
             await insertReplay(replay)
@@ -67,5 +70,6 @@ const isReplayValid = (replay: Replay) => {
     if (replay.players[1].connectCode === '') isValid = false
     if (replay.players[1].name === '') isValid = false
     if (replay.players[1].characterId === '') isValid = false
+    if (replay.stageId === '') isValid = false
     return isValid
 }

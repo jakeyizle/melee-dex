@@ -10,6 +10,7 @@ export type Replay = {
     name: string;
     path: string;
     date: string;
+    stageId: string;
     players: ReplayPlayer[];
     winnerConnectCode: string;
 }
@@ -26,4 +27,16 @@ export const insertReplay = async (replay: Replay) => {
 
 export const insertBadReplay = async ({name, path}: { name: string, path: string }) => {
     await badReplaysStore.setItem(name, path);
+}
+
+export const selectReplaysWithBothPlayers = async (connectCodes: string[]) => {
+    let replays: Replay[] = []
+    let i = 0
+    await replaysStore.iterate((value: Replay, key) => {
+        if (connectCodes.includes(value.players[0].connectCode) && connectCodes.includes(value.players[1].connectCode)) {
+            replays.push(value);
+        }
+    });
+    console.log(`found ${replays.length} replays with players: ${connectCodes}`);
+    return replays;
 }

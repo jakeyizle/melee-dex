@@ -29,9 +29,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AppBar position="static" color="default" elevation={1}>
       <Toolbar>
         <Typography variant="h6" component="h1" sx={{ fontWeight: "bold" }}>
-          <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
+          {/* <Link to="/" style={{ textDecoration: "none", color: "inherit" }}> */}
           Live Slippi Stats
-          </Link>
+          {/* </Link> */}
         </Typography>
         <Box sx={{ ml: "auto", display: "flex", gap: 3 }}>
           <Link to="/settings" style={{ textDecoration: "none", color: "inherit" }}>

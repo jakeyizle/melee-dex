@@ -4,6 +4,8 @@ import os from 'node:os'
 import { WORKER_URL, WORKER_HTML, PRELOAD, VITE_DEV_SERVER_URL, INDEX_HTML } from "./vite_constants";
 import path from "node:path";
 import { update } from "./update";
+import { require } from "./vite_constants";
+const { SlippiGame } = require('@slippi/slippi-js');
 
 const NUM_CORES = os.cpus().length;
 type ReplayFile = { path: string; name: string; }
@@ -114,4 +116,36 @@ export const createMainWindow = async () => {
 
 export const destroyMainWindow = () => {
   mainWindow = null
+}
+
+// we listen in the directory and all subdirectories
+// look for .slp file to be changing
+// try to extract player data
+let watcher: fs.FSWatcher
+export const listenForReplayFile = (directory: string) => {
+  watcher?.close();
+    watcher = fs.watch(directory, {recursive: true}, (event, filename) => {
+        if (filename) {
+          try {
+            const filePath = path.join(directory, filename);
+            const game = new SlippiGame(filePath);
+            const settings = game.getSettings();
+            const players = settings?.players.map((player: any) => {
+                return {
+                    connectCode: player.connectCode,
+                    name: player.displayName,
+                    characterId: (player.characterId || 0).toString()
+                }        
+            })
+            const stageId = settings.stageId
+            mainWindow?.webContents.send('new-game', { filename, players, stageId });
+          } catch (e) {
+            console.error(e)
+          }
+        }
+    })
+}
+
+export const stopListeningForReplayFile = () => {
+    watcher?.close();
 }

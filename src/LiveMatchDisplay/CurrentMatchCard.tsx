@@ -1,3 +1,4 @@
+import { LiveReplayPlayers } from "@/types";
 import {
   Typography,
   Box,
@@ -5,10 +6,20 @@ import {
   CardHeader,
   CardContent,
   Grid,
-
 } from "@mui/material"
+import { getCharacterIcon } from "@/assets/characterIcons/getCharacterIcon";
+import { getCharacterNameFromId, getStageNameFromId } from "@/meleeIdUtils";
+interface CurrentMatchCardProps {
+  players: LiveReplayPlayers[];
+  stageId: string
+}
 
-export const CurrentMatchCard = () => {
+export const CurrentMatchCard = ({ players, stageId }: CurrentMatchCardProps) => {
+  const playerOne = players[0];
+  const playerTwo = players[1];
+  // TODO stageId -> stage string
+  // const stageId =
+
   return (
     <Card variant="outlined">
     <CardHeader
@@ -38,15 +49,15 @@ export const CurrentMatchCard = () => {
                 justifyContent: "center",
                 fontSize: "2.5rem",
               }}
-            >
-              🦊
+            >              
+              <img src={getCharacterIcon(playerOne.characterId)} />
             </Box>
           </Box>
           <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: "bold" }}>
-            Player 1
+            {`${playerOne.name} (${playerOne.connectCode})`}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Fox
+          {getCharacterNameFromId(playerOne.characterId)}
           </Typography>
         </Box>
 
@@ -76,20 +87,20 @@ export const CurrentMatchCard = () => {
                 fontSize: "2.5rem",
               }}
             >
-              🐦
-            </Box>
+              <img src={getCharacterIcon(playerTwo.characterId)} />
+              </Box>
           </Box>
           <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: "bold" }}>
-            Player 2
+            {`${playerTwo.name} (${playerTwo.connectCode})`}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Falco
+          {getCharacterNameFromId(playerTwo.characterId)}
           </Typography>
         </Box>
       </Box>
       <Box sx={{ mt: 2, textAlign: "center" }}>
         <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-          Stage: Final Destination
+          {getStageNameFromId(stageId)}
         </Typography>
       </Box>
     </CardContent>

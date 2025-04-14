@@ -1,5 +1,5 @@
 import { ipcMain, dialog, } from "electron";
-import { createInvisWindow, getReplayFiles, mainWindow } from "./utils";
+import { createInvisWindow, getReplayFiles, listenForReplayFile, mainWindow, stopListeningForReplayFile } from "./utils";
 
 
 ipcMain.handle('select-directory', async (event, arg) => {
@@ -52,3 +52,13 @@ ipcMain.handle('replay-loaded', (event) => {
     mainWindow?.webContents.send('update-replay-load-progress', { totalReplaysToLoad, currentReplaysLoaded });
 })
 
+ipcMain.handle('listen-for-new-replays', (event, args) => {
+    const { replayDirectory } = args;
+    console.log('listen-for-new-replays', replayDirectory);
+    if (!replayDirectory) return;
+    listenForReplayFile(replayDirectory);
+})
+
+ipcMain.handle('stop-listening-for-new-replays', () => {
+    stopListeningForReplayFile();
+})
