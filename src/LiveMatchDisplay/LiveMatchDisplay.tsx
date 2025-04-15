@@ -14,7 +14,7 @@ import { ReplayInfoDisplay } from "./ReplayInfoDisplay";
 import { CurrentReplayInfo, LiveReplayPlayers } from "@/types";
 
 export const LiveMatchDisplay = () => {
-  const [hasReplayDirectory, setHasReplayDirectory] = useState(true);
+  const [replayDirectory, setReplayDirectory] = useState("");
   const [currentReplaysLoaded, setCurrentReplaysLoaded] = useState(0);
   const [totalReplaysToLoad, setTotalReplaysToLoad] = useState(0);
   const [isLoadingReplays, setIsLoadingReplays] = useState(false);
@@ -27,7 +27,7 @@ export const LiveMatchDisplay = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       const { replayDirectory } = await selectAllSettings();
-      setHasReplayDirectory(!!replayDirectory);
+      setReplayDirectory(replayDirectory);
       if (!!replayDirectory) {
         const existingReplayNames = await selectAllReplayNames();
         window.ipcRenderer.invoke("begin-loading-replays", {
@@ -88,12 +88,19 @@ export const LiveMatchDisplay = () => {
     ) => {
       const { filename, players, stageId } = args;
       if (filename === currentFileName?.current) return;
+      // start new replay load
+      const existingReplayNames = await selectAllReplayNames();
+      window.ipcRenderer.invoke("begin-loading-replays", {
+        replayDirectory: replayDirectory,
+        existingReplayNames,
+      });
+      setIsLoadingReplays(true);
+
       const historicalReplays = await selectReplaysWithBothPlayers([
         players[0].connectCode,
         players[1].connectCode,
       ]);
       setHistoricalReplays(historicalReplays);
-      console.log("stageId", stageId);
       setCurrentReplayInfo({ players, stageId });
       currentFileName.current = filename;
     };
@@ -102,11 +109,11 @@ export const LiveMatchDisplay = () => {
     return () => {
       window.ipcRenderer.off("new-game", newReplayLoaded);
     };
-  }, []);
+  }, [replayDirectory]);
 
   return (
     <Container component="main" sx={{ py: 3, flex: 1 }}>
-      {!hasReplayDirectory && (
+      {!replayDirectory && (
         <Alert severity="error">
           Replay directory must be set in settings.
         </Alert>

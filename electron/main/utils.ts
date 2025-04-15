@@ -139,10 +139,15 @@ let watcher: fs.FSWatcher;
 export const listenForReplayFile = (directory: string) => {
   watcher?.close();
   watcher = fs.watch(directory, { recursive: true }, (event, filename) => {
+    console.log("event, filename", event, filename);
     if (filename) {
       try {
         const filePath = path.join(directory, filename);
         const game = new SlippiGame(filePath);
+        const winners = game.getWinners();
+        if (winners.length > 0) {
+          console.log("winners", winners, directory, filename);
+        }
         const settings = game.getSettings();
         const players = settings?.players.map((player: any) => {
           return {
@@ -157,9 +162,7 @@ export const listenForReplayFile = (directory: string) => {
           players,
           stageId,
         });
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (_e) {}
     }
   });
 };

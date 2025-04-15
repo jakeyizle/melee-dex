@@ -37,7 +37,6 @@ export const insertBadReplay = async ({
 
 export const selectReplaysWithBothPlayers = async (connectCodes: string[]) => {
   let replays: Replay[] = [];
-  let i = 0;
   await replaysStore.iterate((value: Replay, key) => {
     if (
       connectCodes.includes(value.players[0].connectCode) &&
@@ -46,6 +45,17 @@ export const selectReplaysWithBothPlayers = async (connectCodes: string[]) => {
       replays.push(value);
     }
   });
-  console.log(`found ${replays.length} replays with players: ${connectCodes}`);
+  return replays;
+};
+
+export const selectReplaysWithPlayer = async (connectCode: string) => {
+  let replays: Replay[] = [];
+  await replaysStore.iterate((value: Replay, key) => {
+    if (connectCode === value.players[0].connectCode) {
+      replays.push(value);
+    } else if (connectCode === value.players[1].connectCode) {
+      replays.push(value);
+    }
+  });
   return replays;
 };

@@ -1,14 +1,10 @@
 import { LiveReplayPlayers } from "@/types";
-import {
-  Typography,
-  Box,
-  Card,
-  CardHeader,
-  CardContent,
-  Grid,
-} from "@mui/material";
+import { Typography, Box, Card, CardHeader, CardContent } from "@mui/material";
 import { getCharacterIcon } from "@/assets/characterIcons/getCharacterIcon";
-import { getCharacterNameFromId, getStageNameFromId } from "@/meleeIdUtils";
+import {
+  getCharacterNameFromId,
+  getStageNameFromId,
+} from "@/utils/meleeIdUtils";
 interface CurrentMatchCardProps {
   players: LiveReplayPlayers[];
   stageId: string;
@@ -20,8 +16,6 @@ export const CurrentMatchCard = ({
 }: CurrentMatchCardProps) => {
   const playerOne = players[0];
   const playerTwo = players[1];
-  // TODO stageId -> stage string
-  // const stageId =
 
   return (
     <Card variant="outlined">

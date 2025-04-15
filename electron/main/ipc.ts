@@ -6,6 +6,7 @@ import {
   mainWindow,
   stopListeningForReplayFile,
 } from "./utils";
+import { ReplayLoadManager } from "./replayLoadManager";
 
 ipcMain.handle("select-directory", async (event, arg) => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -30,10 +31,10 @@ ipcMain.handle(
     args: {
       replayDirectory: string | undefined;
       existingReplayNames: string[];
-      isFastLoad: boolean;
     },
   ) => {
-    const { replayDirectory, existingReplayNames, isFastLoad } = args;
+    const { replayDirectory, existingReplayNames } = args;
+    console.log("begin-loading-replays", replayDirectory, isLoadingReplays);
     if (!replayDirectory) return;
     if (isLoadingReplays) return;
     isLoadingReplays = true;
@@ -44,6 +45,7 @@ ipcMain.handle(
     );
 
     totalReplays = replays.length;
+    console.log("newReplays", newReplays.length);
     if (newReplays.length === 0) {
       isLoadingReplays = false;
       mainWindow?.webContents.send("end-loading-replays", { totalReplays });
@@ -64,6 +66,7 @@ ipcMain.handle("worker-finished", (event) => {
   const worker = event.sender;
   worker.close();
   isLoadingReplays = false;
+  console.log("worker-finished");
   mainWindow?.webContents.send("end-loading-replays", { totalReplays });
 });
 
