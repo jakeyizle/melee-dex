@@ -1,10 +1,18 @@
-import { createInvisWindow, getReplayFiles, mainWindow } from "./utils";
+import { WebContents } from "electron";
+import {
+  createInvisWindow,
+  getNumberOfWorkers,
+  getReplayFiles,
+  mainWindow,
+  splitReplaysIntoChunks,
+} from "./utils";
 
 export class ReplayLoadManager {
   private static instance: ReplayLoadManager | null = null;
   private isLoadingReplays = false;
   private totalReplaysToLoad = 0;
   private currentReplaysLoaded = 0;
+  private workerWebContents: WebContents[] = [];
 
   private constructor() {}
 
@@ -38,7 +46,11 @@ export class ReplayLoadManager {
     this.totalReplaysToLoad = newReplays.length;
     this.currentReplaysLoaded = 0;
 
-    createInvisWindow(newReplays);
+    const numberOfWorkers = getNumberOfWorkers(this.totalReplaysToLoad);
+    const chunks = splitReplaysIntoChunks(newReplays, numberOfWorkers);
+    for (const chunk of chunks) {
+      this.workerWebContents.push(createInvisWindow(chunk));
+    }
   }
 
   public async beginLoadingReplayFile(file: { path: string; name: string }) {
@@ -49,13 +61,19 @@ export class ReplayLoadManager {
     createInvisWindow([file]);
   }
 
-  public endLoadingReplays() {
-    this.isLoadingReplays = false;
-    mainWindow?.webContents.send("end-loading-replays");
+  public endLoadingReplays(webContents: WebContents) {
+    webContents.close();
+    this.workerWebContents = this.workerWebContents.filter(
+      (c) => c !== webContents,
+    );
+    if (this.workerWebContents.length === 0) {
+      this.isLoadingReplays = false;
+      mainWindow?.webContents.send("end-loading-replays");
+    }
   }
 
-  public updateReplayLoadProgress() {
-    this.currentReplaysLoaded++;
+  public updateReplayLoadProgress(batch: number) {
+    this.currentReplaysLoaded += batch;
     mainWindow?.webContents.send("update-replay-load-progress", {
       totalReplaysToLoad: this.totalReplaysToLoad,
       currentReplaysLoaded: this.currentReplaysLoaded,

@@ -7,8 +7,11 @@ import {
   insertBadReplay,
 } from "./db/replays";
 
+const processedBatch = [];
+
 ipcRenderer.on("start-load", async (event, args) => {
   const files = args.files;
+  console.log(files.length);
   try {
     for (const file of files) {
       try {
@@ -16,13 +19,13 @@ ipcRenderer.on("start-load", async (event, args) => {
         const metadata = game.getMetadata();
         const settings = game.getSettings();
         if (settings?.players.filter((p) => p.type === 0).length !== 2) {
-          await insertBadReplay({ name: file.name, path: file.path });
+          await postBadReplay({ name: file.name, path: file.path });
           continue;
         }
         const winners = tryGetWinner(game);
 
         if (!settings?.players || !metadata?.startAt || winners.length === 0) {
-          await insertBadReplay({ name: file.name, path: file.path });
+          await postBadReplay({ name: file.name, path: file.path });
           continue;
         }
         const playerOne: ReplayPlayer = {
@@ -35,7 +38,7 @@ ipcRenderer.on("start-load", async (event, args) => {
             metadata?.players?.[0]?.names?.netplay ||
             "",
           characterId:
-            (settings.players[0].characterId || 0).toString() ||
+            (settings.players[0].characterId || "").toString() ||
             Object.values(metadata.players![0].characters)[0].toString(),
         };
 
@@ -49,7 +52,7 @@ ipcRenderer.on("start-load", async (event, args) => {
             metadata?.players?.[1]?.names?.netplay ||
             "",
           characterId:
-            (settings.players[1].characterId || 0).toString() ||
+            (settings.players[1].characterId || "").toString() ||
             Object.values(metadata.players![1].characters)[0].toString(),
         };
 
@@ -69,18 +72,23 @@ ipcRenderer.on("start-load", async (event, args) => {
         if (isReplayValid(replay)) {
           await insertReplay(replay);
         } else {
-          await insertBadReplay({ name: file.name, path: file.path });
+          await postBadReplay({ name: file.name, path: file.path });
         }
       } catch (e) {
-        await insertBadReplay({ name: file.name, path: file.path });
+        await postBadReplay({ name: file.name, path: file.path });
       } finally {
-        ipcRenderer.invoke("replay-loaded");
+        processedBatch.push(file);
+        if (processedBatch.length >= 25 || file === files[files.length - 1]) {
+          ipcRenderer.invoke("replay-loaded", { batch: processedBatch.length });
+          processedBatch.length = 0;
+        }
       }
     }
   } catch (e) {
     console.error(e);
   } finally {
-    ipcRenderer.invoke("worker-finished");
+    console.log("worker finished");
+    // ipcRenderer.invoke("worker-finished");
   }
 });
 
@@ -117,4 +125,15 @@ const tryGetWinner = (game: SlippiGame) => {
     }
   }
   return winners;
+};
+
+const postBadReplay = async ({
+  name,
+  path,
+}: {
+  name: string;
+  path: string;
+}) => {
+  console.log("postBadReplay", name, path);
+  await insertBadReplay({ name, path });
 };

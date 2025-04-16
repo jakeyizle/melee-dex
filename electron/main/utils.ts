@@ -56,14 +56,23 @@ export async function getReplayFiles(path: string | undefined) {
   return replays;
 }
 
-export const getNumberOfRenderers = (
-  numberOfReplays: number,
-  isFastLoad: boolean,
-) => {
-  const maxRenderers = isFastLoad ? NUM_CORES * 2 : 1;
+export const getNumberOfWorkers = (numberOfReplays: number) => {
+  const maxRenderers = Math.floor(NUM_CORES * 1.25);
   const numRenderers =
     numberOfReplays < maxRenderers ? numberOfReplays : maxRenderers;
   return numRenderers;
+};
+
+export const splitReplaysIntoChunks = (
+  replayFiles: ReplayFile[],
+  numberOfChunks: number,
+) => {
+  const chunkSize = Math.ceil(replayFiles.length / numberOfChunks);
+  const chunks = [];
+  for (let i = 0; i < replayFiles.length; i += chunkSize) {
+    chunks.push(replayFiles.slice(i, i + chunkSize));
+  }
+  return chunks;
 };
 
 export const createInvisWindow = (files: ReplayFile[]) => {
@@ -87,7 +96,7 @@ export const createInvisWindow = (files: ReplayFile[]) => {
     invisWindow.webContents.send("start-load", { files: files });
   });
 
-  return invisWindow;
+  return invisWindow.webContents;
 };
 
 export const createMainWindow = async () => {

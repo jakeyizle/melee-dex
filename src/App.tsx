@@ -3,9 +3,7 @@ import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "./Layout";
 import { LiveMatchDisplay } from "./LiveMatchDisplay";
 import { SettingsPage } from "./Settings";
-// drop db for testing
-import localforage from "localforage";
-localforage.dropInstance({ name: "db" });
+
 export default function App() {
   return (
     <Router>

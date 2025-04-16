@@ -42,18 +42,14 @@ ipcMain.handle(
 );
 
 ipcMain.handle("worker-finished", (event) => {
+  console.log("worker-finished");
   const worker = event.sender;
-  worker.close();
-  replayLoadManager.endLoadingReplays();
+  replayLoadManager.endLoadingReplays(worker);
 });
 
-const timeStamp = () => new Date().getTime();
-let previousTimeStamp = timeStamp();
-ipcMain.handle("replay-loaded", (event) => {
-  const currentTimeStamp = timeStamp();
-  console.log("replay-loaded", currentTimeStamp - previousTimeStamp);
-  previousTimeStamp = currentTimeStamp;
-  replayLoadManager.updateReplayLoadProgress();
+ipcMain.handle("replay-loaded", (event, args: { batch: number }) => {
+  const { batch } = args;
+  replayLoadManager.updateReplayLoadProgress(batch);
 });
 
 ipcMain.handle("listen-for-new-replays", (event, args) => {

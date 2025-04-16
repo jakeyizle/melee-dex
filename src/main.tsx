@@ -9,10 +9,14 @@ import "@fontsource/roboto/700.css";
 // If you want use Node.js, the`nodeIntegration` needs to be enabled in the Main process.
 // import './demos/node'
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+// drop db for testing
+import localforage from "localforage";
+localforage.dropInstance({ name: "db" }).then(() => {
+  ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+});
 
 postMessage({ payload: "removeLoading" }, "*");
