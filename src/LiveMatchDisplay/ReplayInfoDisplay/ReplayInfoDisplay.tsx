@@ -2,19 +2,33 @@ import { Box, Paper, Typography } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 import { ReplayLoadProgressBar } from "./ReplayLoadProgressBar";
+import { useEffect, useState } from "react";
+import { selectReplayCount } from "@/db/replays";
 
 interface ReplayInfoDisplayProps {
-  currentCount: number;
-  totalCount: number;
+  currentLoadCount: number;
+  totalLoadCount: number;
   isLoadInProgress: boolean;
 }
 
 export const ReplayInfoDisplay = ({
-  currentCount,
-  totalCount,
+  currentLoadCount,
+  totalLoadCount,
   isLoadInProgress,
 }: ReplayInfoDisplayProps) => {
-  if (currentCount === 0 && totalCount === 0) return null;
+  const [totalReplayCount, setTotalReplayCount] = useState(0);
+
+  useEffect(() => {
+    const fetchReplayCount = async () => {
+      const replayCount = await selectReplayCount();
+      setTotalReplayCount(replayCount);
+    };
+    if (isLoadInProgress) return;
+    fetchReplayCount();
+  }, [isLoadInProgress]);
+
+  if (isLoadInProgress && currentLoadCount === 0 && totalLoadCount === 0)
+    return null;
   if (isLoadInProgress) {
     return (
       <Box sx={{ width: "100%" }} mb={3}>
@@ -27,12 +41,14 @@ export const ReplayInfoDisplay = ({
             gap: 1,
           }}
         >
-          Loading Replays...
+          Loaded {currentLoadCount} of {totalLoadCount} replays
         </Typography>
-        <ReplayLoadProgressBar value={(currentCount / totalCount) * 100} />
+        <ReplayLoadProgressBar
+          value={(currentLoadCount / totalLoadCount) * 100}
+        />
       </Box>
     );
-  } else {
+  } else if (totalReplayCount > 0) {
     return (
       <Box sx={{ display: "flex", alignItems: "center" }} mb={3}>
         <Paper sx={{ p: 1, bgcolor: "action.hover" }} variant="outlined">
@@ -46,7 +62,7 @@ export const ReplayInfoDisplay = ({
             }}
           >
             <CheckCircleIcon fontSize="small" color="success" />
-            {totalCount} replays loaded
+            {totalReplayCount} replays loaded
           </Typography>
         </Paper>
       </Box>

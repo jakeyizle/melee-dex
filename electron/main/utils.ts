@@ -8,6 +8,7 @@ import {
   VITE_DEV_SERVER_URL,
   INDEX_HTML,
 } from "./vite_constants";
+import { ReplayLoadManager } from "./replayLoadManager";
 import path from "node:path";
 import { update } from "./update";
 import { require } from "./vite_constants";
@@ -17,6 +18,7 @@ const NUM_CORES = os.cpus().length;
 type ReplayFile = { path: string; name: string };
 
 export let mainWindow: BrowserWindow | null = null;
+const replayLoadManager = ReplayLoadManager.getInstance();
 
 async function getFiles(path = "./") {
   // add "/" to the end of path if not present
@@ -144,10 +146,17 @@ export const listenForReplayFile = (directory: string) => {
       try {
         const filePath = path.join(directory, filename);
         const game = new SlippiGame(filePath);
+
         const winners = game.getWinners();
         if (winners.length > 0) {
-          console.log("winners", winners, directory, filename);
+          const path = directory + "/" + filename;
+          // filename can sometimes include subdirectories of directory
+          // but just want the actual file name
+          const name = filename.split("/").pop() || filename;
+          replayLoadManager.beginLoadingReplayFile({ path, name });
+          return;
         }
+
         const settings = game.getSettings();
         const players = settings?.players.map((player: any) => {
           return {

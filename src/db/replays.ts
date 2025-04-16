@@ -59,3 +59,7 @@ export const selectReplaysWithPlayer = async (connectCode: string) => {
   });
   return replays;
 };
+
+export const selectReplayCount = async () => {
+  return await replaysStore.length();
+};

@@ -1,13 +1,10 @@
-import { BrowserWindow } from "electron";
-import { createInvisWindow, getReplayFiles } from "./utils";
-import { mainWindow } from "./utils";
+import { createInvisWindow, getReplayFiles, mainWindow } from "./utils";
 
 export class ReplayLoadManager {
   private static instance: ReplayLoadManager | null = null;
   private isLoadingReplays = false;
   private totalReplaysToLoad = 0;
   private currentReplaysLoaded = 0;
-  private totalReplays = 0;
 
   private constructor() {}
 
@@ -18,7 +15,7 @@ export class ReplayLoadManager {
     return this.instance;
   }
 
-  public async beginLoadingReplays(
+  public async beginLoadingReplayDirectory(
     replayDirectory: string | undefined,
     existingReplayNames: string[],
   ) {
@@ -27,7 +24,6 @@ export class ReplayLoadManager {
     this.isLoadingReplays = true;
 
     const replays = await getReplayFiles(replayDirectory);
-    this.totalReplays = replays.length;
 
     const newReplays = replays.filter(
       (replay) => !existingReplayNames.includes(replay.name),
@@ -35,28 +31,27 @@ export class ReplayLoadManager {
 
     if (newReplays.length === 0) {
       this.isLoadingReplays = false;
-      mainWindow?.webContents.send("end-loading-replays", {
-        totalReplays: this.totalReplays,
-      });
+      mainWindow?.webContents.send("end-loading-replays");
       return;
     }
 
     this.totalReplaysToLoad = newReplays.length;
     this.currentReplaysLoaded = 0;
 
-    mainWindow?.webContents.send("begin-loading-replays", {
-      replayDirectory,
-      existingReplayNames,
-    });
-
     createInvisWindow(newReplays);
+  }
+
+  public async beginLoadingReplayFile(file: { path: string; name: string }) {
+    if (this.isLoadingReplays) return;
+    this.isLoadingReplays = true;
+    this.totalReplaysToLoad = 1;
+    this.currentReplaysLoaded = 0;
+    createInvisWindow([file]);
   }
 
   public endLoadingReplays() {
     this.isLoadingReplays = false;
-    mainWindow?.webContents.send("end-loading-replays", {
-      totalReplays: this.totalReplays,
-    });
+    mainWindow?.webContents.send("end-loading-replays");
   }
 
   public updateReplayLoadProgress() {

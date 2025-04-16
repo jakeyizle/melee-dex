@@ -1,12 +1,11 @@
 import { ipcMain, dialog } from "electron";
 import {
-  createInvisWindow,
-  getReplayFiles,
   listenForReplayFile,
   mainWindow,
   stopListeningForReplayFile,
 } from "./utils";
 import { ReplayLoadManager } from "./replayLoadManager";
+const replayLoadManager = ReplayLoadManager.getInstance();
 
 ipcMain.handle("select-directory", async (event, arg) => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
@@ -20,10 +19,6 @@ ipcMain.handle("select-directory", async (event, arg) => {
   }
 });
 
-let isLoadingReplays = false;
-let totalReplaysToLoad = 0;
-let currentReplaysLoaded = 0;
-let totalReplays = 0;
 ipcMain.handle(
   "begin-loading-replays",
   async (
@@ -34,53 +29,35 @@ ipcMain.handle(
     },
   ) => {
     const { replayDirectory, existingReplayNames } = args;
-    console.log("begin-loading-replays", replayDirectory, isLoadingReplays);
-    if (!replayDirectory) return;
-    if (isLoadingReplays) return;
-    isLoadingReplays = true;
-
-    const replays = await getReplayFiles(replayDirectory);
-    const newReplays = replays.filter(
-      (replay) => !existingReplayNames.includes(replay.name),
+    console.log(
+      "begin-loading-replays",
+      replayDirectory,
+      existingReplayNames.length,
     );
-
-    totalReplays = replays.length;
-    console.log("newReplays", newReplays.length);
-    if (newReplays.length === 0) {
-      isLoadingReplays = false;
-      mainWindow?.webContents.send("end-loading-replays", { totalReplays });
-      return;
-    }
-
-    totalReplaysToLoad = newReplays.length;
-    currentReplaysLoaded = 0;
-    mainWindow?.webContents.send("update-replay-load-progress", {
-      totalReplaysToLoad,
-      currentReplaysLoaded,
-    });
-    createInvisWindow(newReplays);
+    replayLoadManager.beginLoadingReplayDirectory(
+      replayDirectory,
+      existingReplayNames,
+    );
   },
 );
 
 ipcMain.handle("worker-finished", (event) => {
   const worker = event.sender;
   worker.close();
-  isLoadingReplays = false;
-  console.log("worker-finished");
-  mainWindow?.webContents.send("end-loading-replays", { totalReplays });
+  replayLoadManager.endLoadingReplays();
 });
 
+const timeStamp = () => new Date().getTime();
+let previousTimeStamp = timeStamp();
 ipcMain.handle("replay-loaded", (event) => {
-  currentReplaysLoaded++;
-  mainWindow?.webContents.send("update-replay-load-progress", {
-    totalReplaysToLoad,
-    currentReplaysLoaded,
-  });
+  const currentTimeStamp = timeStamp();
+  console.log("replay-loaded", currentTimeStamp - previousTimeStamp);
+  previousTimeStamp = currentTimeStamp;
+  replayLoadManager.updateReplayLoadProgress();
 });
 
 ipcMain.handle("listen-for-new-replays", (event, args) => {
   const { replayDirectory } = args;
-  console.log("listen-for-new-replays", replayDirectory);
   if (!replayDirectory) return;
   listenForReplayFile(replayDirectory);
 });

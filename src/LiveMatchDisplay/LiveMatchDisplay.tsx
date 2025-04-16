@@ -35,17 +35,9 @@ export const LiveMatchDisplay = () => {
           existingReplayNames,
         });
         setIsLoadingReplays(true);
-
-        window.ipcRenderer.invoke("listen-for-new-replays", {
-          replayDirectory,
-        });
       }
     };
     fetchSettings();
-
-    return () => {
-      window.ipcRenderer.invoke("stop-listening-for-new-replays");
-    };
   }, []);
 
   // update replay load progress
@@ -59,11 +51,13 @@ export const LiveMatchDisplay = () => {
       setTotalReplaysToLoad(totalReplaysToLoad);
     };
 
-    const endLoadingReplays = (_event: any, args: { totalReplays: number }) => {
-      const { totalReplays } = args;
-      setTotalReplaysToLoad(totalReplays);
+    const endLoadingReplays = () => {
+      setTotalReplaysToLoad(0);
       setCurrentReplaysLoaded(0);
       setIsLoadingReplays(false);
+      window.ipcRenderer.invoke("listen-for-new-replays", {
+        replayDirectory,
+      });
     };
 
     window.ipcRenderer.on(
@@ -77,6 +71,7 @@ export const LiveMatchDisplay = () => {
         updateReplayLoadProgress,
       );
       window.ipcRenderer.off("end-loading-replays", endLoadingReplays);
+      window.ipcRenderer.invoke("stop-listening-for-new-replays");
     };
   }, []);
 
@@ -88,13 +83,6 @@ export const LiveMatchDisplay = () => {
     ) => {
       const { filename, players, stageId } = args;
       if (filename === currentFileName?.current) return;
-      // start new replay load
-      const existingReplayNames = await selectAllReplayNames();
-      window.ipcRenderer.invoke("begin-loading-replays", {
-        replayDirectory: replayDirectory,
-        existingReplayNames,
-      });
-      setIsLoadingReplays(true);
 
       const historicalReplays = await selectReplaysWithBothPlayers([
         players[0].connectCode,
@@ -109,7 +97,7 @@ export const LiveMatchDisplay = () => {
     return () => {
       window.ipcRenderer.off("new-game", newReplayLoaded);
     };
-  }, [replayDirectory]);
+  }, []);
 
   return (
     <Container component="main" sx={{ py: 3, flex: 1 }}>
@@ -119,8 +107,8 @@ export const LiveMatchDisplay = () => {
         </Alert>
       )}
       <ReplayInfoDisplay
-        currentCount={currentReplaysLoaded}
-        totalCount={totalReplaysToLoad}
+        currentLoadCount={currentReplaysLoaded}
+        totalLoadCount={totalReplaysToLoad}
         isLoadInProgress={isLoadingReplays}
       />
       <Stack spacing={3}>
