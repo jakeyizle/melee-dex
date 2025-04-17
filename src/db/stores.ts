@@ -15,4 +15,6 @@ const badReplaysStore = localforage.createInstance({
   storeName: "badReplays",
 });
 
-export { settingsStore, replaysStore, badReplaysStore };
+const dropDB = async () => await localforage.dropInstance({ name: "db" });
+
+export { settingsStore, replaysStore, badReplaysStore, dropDB };

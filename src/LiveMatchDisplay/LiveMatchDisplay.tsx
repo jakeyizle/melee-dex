@@ -9,6 +9,7 @@ import {
   selectAllReplayNames,
   Replay,
   selectReplaysWithBothPlayers,
+  selectReplayCount,
 } from "@/db/replays";
 import { ReplayInfoDisplay } from "./ReplayInfoDisplay";
 import { CurrentReplayInfo, LiveReplayPlayers } from "@/types";
@@ -21,6 +22,8 @@ export const LiveMatchDisplay = () => {
   const [historicalReplays, setHistoricalReplays] = useState<Replay[]>([]);
   const [currentReplayInfo, setCurrentReplayInfo] =
     useState<CurrentReplayInfo | null>(null);
+  const [totalReplayCount, setTotalReplayCount] = useState(0);
+  const [replaysPerSecond, setReplaysPerSecond] = useState(0);
   const currentFileName = useRef<string | null>(null);
 
   // start replay load only when we have a directory
@@ -44,20 +47,27 @@ export const LiveMatchDisplay = () => {
   useEffect(() => {
     const updateReplayLoadProgress = (
       _event: any,
-      args: { currentReplaysLoaded: number; totalReplaysToLoad: number },
+      args: {
+        currentReplaysLoaded: number;
+        totalReplaysToLoad: number;
+        replaysPerSecond: number;
+      },
     ) => {
-      const { currentReplaysLoaded, totalReplaysToLoad } = args;
+      const { currentReplaysLoaded, totalReplaysToLoad, replaysPerSecond } =
+        args;
       setCurrentReplaysLoaded(currentReplaysLoaded);
       setTotalReplaysToLoad(totalReplaysToLoad);
+      setReplaysPerSecond(replaysPerSecond);
     };
 
-    const endLoadingReplays = () => {
+    const endLoadingReplays = async () => {
       setTotalReplaysToLoad(0);
       setCurrentReplaysLoaded(0);
       setIsLoadingReplays(false);
       window.ipcRenderer.invoke("listen-for-new-replays", {
         replayDirectory,
       });
+      setTotalReplayCount(await selectReplayCount());
     };
 
     window.ipcRenderer.on(
@@ -73,7 +83,7 @@ export const LiveMatchDisplay = () => {
       window.ipcRenderer.off("end-loading-replays", endLoadingReplays);
       window.ipcRenderer.invoke("stop-listening-for-new-replays");
     };
-  }, []);
+  }, [replayDirectory]);
 
   // listen for new replays
   useEffect(() => {
@@ -110,6 +120,8 @@ export const LiveMatchDisplay = () => {
         currentLoadCount={currentReplaysLoaded}
         totalLoadCount={totalReplaysToLoad}
         isLoadInProgress={isLoadingReplays}
+        totalReplayCount={totalReplayCount}
+        replaysPerSecond={replaysPerSecond}
       />
       <Stack spacing={3}>
         <DashboardHeader />
@@ -129,8 +141,14 @@ export const LiveMatchDisplay = () => {
               />
             </Grid>
           </Grid>
+        ) : isLoadingReplays ? (
+          <Alert severity="info">
+            Listening for replays paused while load in progress
+          </Alert>
         ) : (
-          <Alert severity="info">No current replay</Alert>
+          !!replayDirectory && (
+            <Alert severity="info">Listening for new game...</Alert>
+          )
         )}
         {historicalReplays.length > 0 && <RecentMatchesCard />}
       </Stack>

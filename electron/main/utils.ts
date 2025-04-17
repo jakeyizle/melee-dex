@@ -15,7 +15,7 @@ import { require } from "./vite_constants";
 const { SlippiGame } = require("@slippi/slippi-js");
 
 const NUM_CORES = os.cpus().length;
-type ReplayFile = { path: string; name: string };
+export type ReplayFile = { path: string; name: string };
 
 export let mainWindow: BrowserWindow | null = null;
 const replayLoadManager = ReplayLoadManager.getInstance();
@@ -57,25 +57,31 @@ export async function getReplayFiles(path: string | undefined) {
 }
 
 export const getNumberOfWorkers = (numberOfReplays: number) => {
-  const maxRenderers = Math.floor(NUM_CORES * 1.25);
-  const numRenderers =
-    numberOfReplays < maxRenderers ? numberOfReplays : maxRenderers;
+  const renderersByCore = Math.floor(10);
+  const renderersByFileCount = Math.ceil(numberOfReplays / 10);
+
+  const numRenderers = Math.min(renderersByCore, renderersByFileCount);
+  console.log(
+    "numRenderers",
+    numRenderers,
+    renderersByCore,
+    renderersByFileCount,
+  );
   return numRenderers;
 };
 
-export const splitReplaysIntoChunks = (
-  replayFiles: ReplayFile[],
-  numberOfChunks: number,
+export const getBatchSize = (
+  numberOfReplays: number,
+  numberOfWorkers: number,
 ) => {
-  const chunkSize = Math.ceil(replayFiles.length / numberOfChunks);
-  const chunks = [];
-  for (let i = 0; i < replayFiles.length; i += chunkSize) {
-    chunks.push(replayFiles.slice(i, i + chunkSize));
-  }
-  return chunks;
+  const maxBatchSize = 50;
+  const minBatchSize = 5;
+  const batchSize =
+    numberOfWorkers > numberOfReplays ? minBatchSize : maxBatchSize;
+  return batchSize;
 };
 
-export const createInvisWindow = (files: ReplayFile[]) => {
+export const createInvisWindow = () => {
   let invisWindow = new BrowserWindow({
     show: !app.isPackaged,
     webPreferences: {
@@ -93,7 +99,7 @@ export const createInvisWindow = (files: ReplayFile[]) => {
   }
 
   invisWindow.webContents.once("did-finish-load", () => {
-    invisWindow.webContents.send("start-load", { files: files });
+    invisWindow.webContents.send("start-load");
   });
 
   return invisWindow.webContents;

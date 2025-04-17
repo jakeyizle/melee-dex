@@ -9,24 +9,17 @@ interface ReplayInfoDisplayProps {
   currentLoadCount: number;
   totalLoadCount: number;
   isLoadInProgress: boolean;
+  totalReplayCount: number;
+  replaysPerSecond: number;
 }
 
 export const ReplayInfoDisplay = ({
   currentLoadCount,
   totalLoadCount,
   isLoadInProgress,
+  totalReplayCount,
+  replaysPerSecond,
 }: ReplayInfoDisplayProps) => {
-  const [totalReplayCount, setTotalReplayCount] = useState(0);
-
-  useEffect(() => {
-    const fetchReplayCount = async () => {
-      const replayCount = await selectReplayCount();
-      setTotalReplayCount(replayCount);
-    };
-    if (isLoadInProgress) return;
-    fetchReplayCount();
-  }, [isLoadInProgress]);
-
   if (isLoadInProgress && currentLoadCount === 0 && totalLoadCount === 0)
     return null;
   if (isLoadInProgress) {
@@ -41,7 +34,8 @@ export const ReplayInfoDisplay = ({
             gap: 1,
           }}
         >
-          Loaded {currentLoadCount} of {totalLoadCount} replays
+          Loaded {currentLoadCount} of {totalLoadCount} replays (
+          {replaysPerSecond} replays per second)
         </Typography>
         <ReplayLoadProgressBar
           value={(currentLoadCount / totalLoadCount) * 100}

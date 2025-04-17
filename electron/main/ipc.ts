@@ -41,14 +41,15 @@ ipcMain.handle(
   },
 );
 
-ipcMain.handle("worker-finished", (event) => {
-  console.log("worker-finished");
+ipcMain.handle("request-replays-to-load", (event) => {
   const worker = event.sender;
-  replayLoadManager.endLoadingReplays(worker);
+  const replays = replayLoadManager.getNextReplaysToLoad(worker);
+  return replays;
 });
 
 ipcMain.handle("replay-loaded", (event, args: { batch: number }) => {
   const { batch } = args;
+  console.log("replay-loaded", batch);
   replayLoadManager.updateReplayLoadProgress(batch);
 });
 
