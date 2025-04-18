@@ -61,12 +61,6 @@ export const getNumberOfWorkers = (numberOfReplays: number) => {
   const renderersByFileCount = Math.ceil(numberOfReplays / 10);
 
   const numRenderers = Math.min(renderersByCore, renderersByFileCount);
-  console.log(
-    "numRenderers",
-    numRenderers,
-    renderersByCore,
-    renderersByFileCount,
-  );
   return numRenderers;
 };
 
@@ -155,6 +149,7 @@ export const destroyMainWindow = () => {
 let watcher: fs.FSWatcher;
 export const listenForReplayFile = (directory: string) => {
   watcher?.close();
+  console.log("listenForReplayFile", directory);
   watcher = fs.watch(directory, { recursive: true }, (event, filename) => {
     console.log("event, filename", event, filename);
     if (filename) {
@@ -168,6 +163,8 @@ export const listenForReplayFile = (directory: string) => {
           // filename can sometimes include subdirectories of directory
           // but just want the actual file name
           const name = filename.split("/").pop() || filename;
+          console.log("winners", winners);
+          console.log("path:", path, "name:", name);
           replayLoadManager.beginLoadingReplayFile({ path, name });
           return;
         }
@@ -181,7 +178,7 @@ export const listenForReplayFile = (directory: string) => {
           };
         });
         const stageId = settings.stageId;
-        mainWindow?.webContents.send("new-game", {
+        mainWindow?.webContents.send("live-replay-loaded", {
           filename,
           players,
           stageId,
@@ -192,5 +189,6 @@ export const listenForReplayFile = (directory: string) => {
 };
 
 export const stopListeningForReplayFile = () => {
+  console.log("stopListeningForReplayFile");
   watcher?.close();
 };

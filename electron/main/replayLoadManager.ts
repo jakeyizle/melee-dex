@@ -4,8 +4,10 @@ import {
   getBatchSize,
   getNumberOfWorkers,
   getReplayFiles,
+  listenForReplayFile,
   mainWindow,
   ReplayFile,
+  stopListeningForReplayFile,
 } from "./utils";
 
 export class ReplayLoadManager {
@@ -17,6 +19,7 @@ export class ReplayLoadManager {
   private workerWebContents: WebContents[] = [];
   private batchSize = 0;
   private startTimestamp = 0;
+  private replayDirectory = "";
   private constructor() {}
 
   public static getInstance() {
@@ -30,10 +33,11 @@ export class ReplayLoadManager {
     replayDirectory: string | undefined,
     existingReplayNames: string[],
   ) {
+    console.log("beginLoadingReplayDirectory", this.isLoadingReplays);
     if (!replayDirectory) return;
     if (this.isLoadingReplays) return;
     this.isLoadingReplays = true;
-
+    this.replayDirectory = replayDirectory;
     const replays = await getReplayFiles(replayDirectory);
 
     const newReplays = replays.filter(
@@ -41,18 +45,22 @@ export class ReplayLoadManager {
     );
 
     if (newReplays.length === 0) {
-      this.isLoadingReplays = false;
-      mainWindow?.webContents.send("end-loading-replays");
+      this.endLoadingReplays();
       return;
     }
+    stopListeningForReplayFile();
 
     this.totalReplaysToLoad = newReplays.length;
     this.currentReplaysLoaded = 0;
     this.replayFiles = newReplays;
-    console.log("beginLoadingReplayDirectory", this.totalReplaysToLoad);
     const numberOfWorkers = getNumberOfWorkers(this.totalReplaysToLoad);
     this.batchSize = getBatchSize(this.totalReplaysToLoad, numberOfWorkers);
     this.startTimestamp = Date.now();
+
+    if (this.workerWebContents.length > 0) {
+      this.workerWebContents.forEach((webContents) => webContents.close());
+      this.workerWebContents = [];
+    }
     for (let i = 0; i < numberOfWorkers; i++) {
       this.workerWebContents.push(createInvisWindow());
       // add a delay to smooth this out
@@ -61,17 +69,22 @@ export class ReplayLoadManager {
   }
 
   public getNextReplaysToLoad(webContents: WebContents) {
-    console.log("getNextReplaysToLoad", this.replayFiles.length);
-    const replayFiles = this.replayFiles.splice(0, this.batchSize);
-    if (replayFiles.length === 0) {
+    if (this.replayFiles.length === 0) {
       this.endLoadingReplays(webContents);
       return;
     }
+    const replayFiles = this.replayFiles.splice(0, this.batchSize);
     return replayFiles;
   }
 
   public async beginLoadingReplayFile(file: { path: string; name: string }) {
+    console.log(
+      "beginLoadingReplayFile",
+      this.isLoadingReplays,
+      this.workerWebContents.length,
+    );
     if (this.isLoadingReplays) return;
+    stopListeningForReplayFile();
     this.replayFiles = [file];
     this.isLoadingReplays = true;
     this.totalReplaysToLoad = 1;
@@ -87,11 +100,12 @@ export class ReplayLoadManager {
     }
   }
 
-  public endLoadingReplays(webContents: WebContents) {
+  public endLoadingReplays(webContents?: WebContents) {
     // keep 1 worker in background, so we can avoid spinning new workers to load 1 file at a time
-    if (this.workerWebContents.length === 1) {
+    if (this.workerWebContents.length <= 1 || !webContents) {
       this.isLoadingReplays = false;
       mainWindow?.webContents.send("end-loading-replays");
+      listenForReplayFile(this.replayDirectory);
       return;
     }
     webContents.close();

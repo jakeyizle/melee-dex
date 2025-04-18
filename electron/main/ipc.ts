@@ -29,11 +29,7 @@ ipcMain.handle(
     },
   ) => {
     const { replayDirectory, existingReplayNames } = args;
-    console.log(
-      "begin-loading-replays",
-      replayDirectory,
-      existingReplayNames.length,
-    );
+
     replayLoadManager.beginLoadingReplayDirectory(
       replayDirectory,
       existingReplayNames,
@@ -49,7 +45,7 @@ ipcMain.handle("request-replays-to-load", (event) => {
 
 ipcMain.handle("replay-loaded", (event, args: { batch: number }) => {
   const { batch } = args;
-  console.log("replay-loaded", batch);
+
   replayLoadManager.updateReplayLoadProgress(batch);
 });
 

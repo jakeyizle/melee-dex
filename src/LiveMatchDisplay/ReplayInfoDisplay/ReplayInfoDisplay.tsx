@@ -20,8 +20,6 @@ export const ReplayInfoDisplay = ({
   totalReplayCount,
   replaysPerSecond,
 }: ReplayInfoDisplayProps) => {
-  if (isLoadInProgress && currentLoadCount === 0 && totalLoadCount === 0)
-    return null;
   if (isLoadInProgress) {
     return (
       <Box sx={{ width: "100%" }} mb={3}>
@@ -34,11 +32,14 @@ export const ReplayInfoDisplay = ({
             gap: 1,
           }}
         >
-          Loaded {currentLoadCount} of {totalLoadCount} replays (
-          {replaysPerSecond} replays per second)
+          {totalLoadCount === 0
+            ? "Loading replays..."
+            : `Loaded ${currentLoadCount} of ${totalLoadCount} replays (${replaysPerSecond} replays per second)`}
         </Typography>
         <ReplayLoadProgressBar
-          value={(currentLoadCount / totalLoadCount) * 100}
+          value={
+            totalLoadCount === 0 ? 0 : (currentLoadCount / totalLoadCount) * 100
+          }
         />
       </Box>
     );
