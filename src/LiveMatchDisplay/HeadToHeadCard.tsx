@@ -44,7 +44,7 @@ export const HeadToHeadCard = () => {
           </Box>
         }
       />
-      {headToHeadReplays.length > 0 ? (
+      {headToHeadStats.length > 0 ? (
         <CardContent>
           {/* Overall W/L Record */}
           <Box sx={{ mb: 3 }}>

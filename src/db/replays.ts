@@ -99,3 +99,7 @@ export const getMostCommonUser = async (
   }
   return firstUserValue > secondUserValue ? possibleUsers[0] : possibleUsers[1];
 };
+
+export const selectBadReplayCount = async () => {
+  return await badReplaysStore.length();
+};

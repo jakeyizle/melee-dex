@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   Replay,
+  selectBadReplayCount,
   selectReplayCount,
   selectReplaysWithBothPlayers,
   selectReplaysWithUser,
@@ -22,6 +23,7 @@ type ReplayStore = {
   totalReplaysToLoad: number;
   replaysPerSecond: number;
   totalReplayCount: number;
+  totalBadReplayCount: number;
 
   // Actions
   loadReplayDirectory: (replayDirectory: string) => void;
@@ -44,6 +46,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
   totalReplaysToLoad: 0,
   replaysPerSecond: 0,
   totalReplayCount: 0,
+  totalBadReplayCount: 0,
 
   loadReplayDirectory: async (replayDirectory) => {
     if (!replayDirectory) return;
@@ -115,6 +118,7 @@ export const setupReplayStoreIpcListeners = () => {
     );
 
     const totalReplayCount = await selectReplayCount();
+    const totalBadReplayCount = await selectBadReplayCount();
     setState({
       isLoadingReplays: false,
       currentReplaysLoaded: 0,
@@ -123,6 +127,7 @@ export const setupReplayStoreIpcListeners = () => {
       headToHeadReplays,
       userReplays,
       totalReplayCount,
+      totalBadReplayCount,
       currentUserConnectCode: userConnectCode,
     });
   });
