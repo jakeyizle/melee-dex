@@ -1,3 +1,4 @@
+import { useReplayStore } from "@/replayStore";
 import {
   Typography,
   Box,
@@ -9,6 +10,9 @@ import {
 } from "@mui/material";
 
 export const RecentMatchesCard = () => {
+  const { headToHeadReplays } = useReplayStore();
+  if (headToHeadReplays?.length === 0) return null;
+
   return (
     <Card variant="outlined">
       <CardHeader title="Recent Matches" subheader="Last 5 matches played" />

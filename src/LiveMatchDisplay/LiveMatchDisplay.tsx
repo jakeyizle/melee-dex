@@ -1,12 +1,13 @@
 import { Alert, Container, Grid, Stack } from "@mui/material";
 import { DashboardHeader } from "./DashboardHeader";
 import { CurrentMatchCard } from "./CurrentMatchCard";
-import { PlayerStatsCard } from "./PlayerStatsCard";
+import { HeadToHeadCard } from "./HeadToHeadCard";
 import { RecentMatchesCard } from "./RecentMatchesCard";
 import { useEffect } from "react";
 
 import { ReplayInfoDisplay } from "./ReplayInfoDisplay";
 import { useReplayStore } from "@/replayStore";
+import { UserStatsCard } from "./UserStatsCard";
 interface LiveMatchDisplayProps {
   replayDirectory: string;
 }
@@ -14,51 +15,33 @@ interface LiveMatchDisplayProps {
 export const LiveMatchDisplay = ({
   replayDirectory,
 }: LiveMatchDisplayProps) => {
-  const {
-    loadReplayDirectory,
-    historicalReplays,
-    currentReplayInfo,
-    isLoadingReplays,
-    currentReplaysLoaded,
-    totalReplaysToLoad,
-    replaysPerSecond,
-    totalReplayCount,
-  } = useReplayStore();
+  const { loadReplayDirectory, currentReplayInfo, isLoadingReplays } =
+    useReplayStore();
 
   useEffect(() => {
     loadReplayDirectory(replayDirectory);
   }, [replayDirectory]);
 
   return (
-    <Container component="main" sx={{ py: 3, flex: 1 }}>
+    <Container component="main" sx={{ py: 3, flex: 1 }} maxWidth="xl">
       {!replayDirectory && (
         <Alert severity="error">
           Replay directory must be set in settings.
         </Alert>
       )}
-      <ReplayInfoDisplay
-        currentLoadCount={currentReplaysLoaded}
-        totalLoadCount={totalReplaysToLoad}
-        isLoadInProgress={isLoadingReplays}
-        totalReplayCount={totalReplayCount}
-        replaysPerSecond={replaysPerSecond}
-      />
-      <Stack spacing={3}>
+      <ReplayInfoDisplay />
+      <Stack spacing={1.5}>
         <DashboardHeader />
         {!!currentReplayInfo?.players ? (
           <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <CurrentMatchCard
-                players={currentReplayInfo.players}
-                stageId={currentReplayInfo.stageId}
-              />
+            <Grid size={{ sm: 12, md: 4 }}>
+              <CurrentMatchCard />
             </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <PlayerStatsCard
-                players={currentReplayInfo.players}
-                historicalReplays={historicalReplays}
-              />
+            <Grid size={{ sm: 12, md: 4 }}>
+              <UserStatsCard />
+            </Grid>
+            <Grid size={{ sm: 12, md: 4 }}>
+              <HeadToHeadCard />
             </Grid>
           </Grid>
         ) : isLoadingReplays ? (
@@ -70,7 +53,6 @@ export const LiveMatchDisplay = ({
             <Alert severity="info">Listening for new game...</Alert>
           )
         )}
-        {historicalReplays.length > 0 && <RecentMatchesCard />}
       </Stack>
     </Container>
   );

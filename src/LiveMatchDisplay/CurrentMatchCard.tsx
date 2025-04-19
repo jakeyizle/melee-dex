@@ -1,26 +1,40 @@
 import { LiveReplayPlayers } from "@/types";
-import { Typography, Box, Card, CardHeader, CardContent } from "@mui/material";
+import {
+  Typography,
+  Box,
+  Card,
+  CardHeader,
+  CardContent,
+  Paper,
+  Container,
+} from "@mui/material";
 import { getCharacterIcon } from "@/assets/characterIcons/getCharacterIcon";
 import {
   getCharacterNameFromId,
   getStageNameFromId,
 } from "@/utils/meleeIdUtils";
-interface CurrentMatchCardProps {
-  players: LiveReplayPlayers[];
-  stageId: string;
-}
+import { useReplayStore } from "@/replayStore";
 
-export const CurrentMatchCard = ({
-  players,
-  stageId,
-}: CurrentMatchCardProps) => {
-  const playerOne = players[0];
-  const playerTwo = players[1];
+export const CurrentMatchCard = () => {
+  const { currentReplayInfo } = useReplayStore();
+  if (!currentReplayInfo) return null;
+  const playerOne = currentReplayInfo.players[0];
+  const playerTwo = currentReplayInfo.players[1];
+  const stageId = currentReplayInfo.stageId;
 
   return (
-    <Card variant="outlined">
-      <CardHeader title="Current Match" subheader="Live match information" />
+    <Card
+      sx={{
+        mb: 3,
+      }}
+    >
+      <CardHeader title="Current Match" />
       <CardContent>
+        {/* <Box sx={{ textAlign: "center" }}>
+          <Typography variant="body1" color="text.secondary">
+            {getStageNameFromId(stageId)}
+          </Typography>
+        </Box> */}
         <Box
           sx={{
             display: "flex",
@@ -28,16 +42,17 @@ export const CurrentMatchCard = ({
             alignItems: "center",
           }}
         >
-          <Box sx={{ textAlign: "center" }}>
+          <Box sx={{ textAlign: "center", flex: 1 }}>
             <Box
               sx={{
-                width: 96,
-                height: 96,
+                width: 80,
+                height: 80,
                 mx: "auto",
-                bgcolor: "action.hover",
+                bgcolor: "rgba(255, 255, 255, 0.05)",
                 borderRadius: 2,
                 position: "relative",
                 overflow: "hidden",
+                border: "2px solid rgba(99, 102, 241, 0.3)",
               }}
             >
               <Box
@@ -54,27 +69,33 @@ export const CurrentMatchCard = ({
               </Box>
             </Box>
             <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: "bold" }}>
-              {`${playerOne.name} (${playerOne.connectCode})`}
+              {playerOne.connectCode}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body1" color="text.secondary">
               {getCharacterNameFromId(playerOne.characterId)}
             </Typography>
           </Box>
 
-          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-            VS
-          </Typography>
+          <Box sx={{ mx: 2, textAlign: "center" }}>
+            <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>
+              VS
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {getStageNameFromId(stageId)}
+            </Typography>
+          </Box>
 
-          <Box sx={{ textAlign: "center" }}>
+          <Box sx={{ textAlign: "center", flex: 1 }}>
             <Box
               sx={{
-                width: 96,
-                height: 96,
+                width: 80,
+                height: 80,
                 mx: "auto",
-                bgcolor: "action.hover",
+                bgcolor: "rgba(255, 255, 255, 0.05)",
                 borderRadius: 2,
                 position: "relative",
                 overflow: "hidden",
+                border: "2px solid rgba(245, 158, 11, 0.3)",
               }}
             >
               <Box
@@ -91,17 +112,12 @@ export const CurrentMatchCard = ({
               </Box>
             </Box>
             <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: "bold" }}>
-              {`${playerTwo.name} (${playerTwo.connectCode})`}
+              {playerTwo.connectCode}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body1" color="text.secondary">
               {getCharacterNameFromId(playerTwo.characterId)}
             </Typography>
           </Box>
-        </Box>
-        <Box sx={{ mt: 2, textAlign: "center" }}>
-          <Typography variant="body2" sx={{ fontWeight: "medium" }}>
-            {getStageNameFromId(stageId)}
-          </Typography>
         </Box>
       </CardContent>
     </Card>

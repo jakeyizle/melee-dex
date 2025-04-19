@@ -3,15 +3,18 @@ import {
   Replay,
   selectReplayCount,
   selectReplaysWithBothPlayers,
+  selectReplaysWithUser,
 } from "@/db/replays";
 import { CurrentReplayInfo, LiveReplayPlayers } from "@/types";
 import { selectAllReplayNames } from "@/db/replays";
 
 type ReplayStore = {
   // Shared state
-  historicalReplays: Replay[];
+  userReplays: Replay[];
+  headToHeadReplays: Replay[];
   currentReplayInfo: CurrentReplayInfo | null;
   currentLiveFileName: string;
+  currentUserConnectCode: string;
 
   // Load progress
   isLoadingReplays: boolean;
@@ -30,9 +33,11 @@ type ReplayStore = {
 };
 
 export const useReplayStore = create<ReplayStore>((set, get) => ({
-  historicalReplays: [],
+  userReplays: [],
+  headToHeadReplays: [],
   currentReplayInfo: null,
   currentLiveFileName: "",
+  currentUserConnectCode: "",
 
   isLoadingReplays: false,
   currentReplaysLoaded: 0,
@@ -56,14 +61,21 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
     console.log("handleLiveReplay", filename, currentLiveFileName);
     if (filename === currentLiveFileName) return;
 
-    const historicalReplays = await selectReplaysWithBothPlayers([
+    const { userConnectCode, userReplays } = await selectReplaysWithUser(
+      players.map((p) => p.connectCode),
+    );
+
+    const headToHeadReplays = await selectReplaysWithBothPlayers([
       players[0].connectCode,
       players[1].connectCode,
     ]);
+
     set({
-      historicalReplays,
+      userReplays,
+      headToHeadReplays,
       currentReplayInfo: { players, stageId },
       currentLiveFileName: filename,
+      currentUserConnectCode: userConnectCode,
     });
   },
 }));
@@ -91,20 +103,27 @@ export const setupReplayStoreIpcListeners = () => {
   window.ipcRenderer.on("end-loading-replays", async (_event, args) => {
     console.log("end-loading-replays", args);
     const { currentReplayInfo } = getState();
-    const historicalReplays = currentReplayInfo
+    const headToHeadReplays = currentReplayInfo
       ? await selectReplaysWithBothPlayers([
           currentReplayInfo.players[0].connectCode,
           currentReplayInfo.players[1].connectCode,
         ])
       : [];
+
+    const { userReplays, userConnectCode } = await selectReplaysWithUser(
+      currentReplayInfo?.players.map((p) => p.connectCode) || [],
+    );
+
     const totalReplayCount = await selectReplayCount();
     setState({
       isLoadingReplays: false,
       currentReplaysLoaded: 0,
       totalReplaysToLoad: 0,
       replaysPerSecond: 0,
-      historicalReplays,
+      headToHeadReplays,
+      userReplays,
       totalReplayCount,
+      currentUserConnectCode: userConnectCode,
     });
   });
 };

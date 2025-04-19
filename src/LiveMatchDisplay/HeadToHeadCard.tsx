@@ -17,30 +17,21 @@ import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import { useMemo } from "react";
 import { getCharacterNameFromId } from "@/utils/meleeIdUtils";
 import { getCharacterIcon } from "@/assets/characterIcons/getCharacterIcon";
-interface PlayerStatsCardProps {
-  players: LiveReplayPlayers[];
-  historicalReplays: Replay[];
-}
+import { useReplayStore } from "@/replayStore";
 
-export const PlayerStatsCard = ({
-  players,
-  historicalReplays,
-}: PlayerStatsCardProps) => {
-  // const playerOne = players[0];
-  // const playerTwo = players[1];
-  // const playerOneWinCount = historicalReplays.filter(
-  //   (replay) => replay.winnerConnectCode === playerOne.connectCode,
-  // ).length;
-  // const playerTwoWinCount = historicalReplays.length - playerOneWinCount;
-  // const playerOneWinRate =
-  //   Math.round((playerOneWinCount / historicalReplays.length) * 100 * 10) / 10;
-  // const playerTwoWinRate = 100 - playerOneWinRate;
+export const HeadToHeadCard = () => {
+  const { currentReplayInfo, headToHeadReplays } = useReplayStore();
 
-  const headToHeadStats = useMemo(
-    () => getHeadToHeadStats(historicalReplays, players),
-    [historicalReplays, players],
+  const players = useMemo(
+    () => currentReplayInfo?.players,
+    [currentReplayInfo],
   );
-  console.log(headToHeadStats);
+  if (!players) return null;
+  console.log(headToHeadReplays);
+  const headToHeadStats = useMemo(
+    () => getHeadToHeadStats(headToHeadReplays, players),
+    [headToHeadReplays, players],
+  );
   return (
     <Card sx={{ mb: 3 }}>
       <CardHeader
@@ -52,15 +43,14 @@ export const PlayerStatsCard = ({
             </Typography>
           </Box>
         }
-        subheader="Player comparison and matchup stats"
       />
-      {historicalReplays.length > 0 ? (
+      {headToHeadReplays.length > 0 ? (
         <CardContent>
           {/* Overall W/L Record */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-              {`Overall Record (${historicalReplays.length} ${
-                historicalReplays.length === 1 ? "game" : "games"
+              {`Overall Record (${headToHeadReplays.length} ${
+                headToHeadReplays.length === 1 ? "game" : "games"
               })`}
             </Typography>
             <Paper sx={{ p: 2, bgcolor: "rgba(255, 255, 255, 0.05)" }}>
@@ -82,9 +72,6 @@ export const PlayerStatsCard = ({
                     {players[0].connectCode}
                   </Typography>
                 </Box>
-                <Typography variant="body1" sx={{ mx: 1 }}>
-                  -
-                </Typography>
                 <Box sx={{ textAlign: "center" }}>
                   <Typography
                     variant="h5"
@@ -143,7 +130,7 @@ export const PlayerStatsCard = ({
           {/* Current Matchup W/L Record */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-              {`${getCharacterNameFromId(players[0].characterId)} vs. ${getCharacterNameFromId(players[1].characterId)} Matchup`}
+              {`${getCharacterNameFromId(players[0].characterId)} vs. ${getCharacterNameFromId(players[1].characterId)}`}
             </Typography>
             <Paper sx={{ p: 2, bgcolor: "rgba(255, 255, 255, 0.05)" }}>
               <Box
@@ -164,9 +151,6 @@ export const PlayerStatsCard = ({
                     {`${getCharacterNameFromId(players[0].characterId)} wins`}
                   </Typography>
                 </Box>
-                <Typography variant="body1" sx={{ mx: 1 }}>
-                  -
-                </Typography>
                 <Box sx={{ textAlign: "center" }}>
                   <Typography
                     variant="h5"
@@ -212,10 +196,10 @@ export const PlayerStatsCard = ({
                   }}
                 >
                   <Typography variant="caption" color="text.secondary">
-                    {headToHeadStats[0].currentMatchUpWinRate}% win rate
+                    {headToHeadStats[0].currentMatchUpWinRate}%
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {headToHeadStats[1].currentMatchUpWinRate}% win rate
+                    {headToHeadStats[1].currentMatchUpWinRate}%
                   </Typography>
                 </Box>
               </Box>
@@ -225,7 +209,7 @@ export const PlayerStatsCard = ({
           {/* Character Usage */}
           <Box>
             <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-              Most Played Characters
+              3 Most Played Characters
             </Typography>
 
             <Grid container spacing={2}>
@@ -271,7 +255,8 @@ export const PlayerStatsCard = ({
                           }}
                         >
                           <Typography variant="body2">
-                            {getCharacterNameFromId(char.characterId)}
+                            {getCharacterNameFromId(char.characterId)} (
+                            {char.playCount})
                           </Typography>
                           <Typography variant="body2">
                             {char.playRate}%
@@ -346,7 +331,8 @@ export const PlayerStatsCard = ({
                           }}
                         >
                           <Typography variant="body2">
-                            {getCharacterNameFromId(char.characterId)}
+                            {getCharacterNameFromId(char.characterId)} (
+                            {char.playCount})
                           </Typography>
                           <Typography variant="body2">
                             {char.playRate}%

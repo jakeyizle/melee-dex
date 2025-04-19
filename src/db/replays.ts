@@ -1,3 +1,4 @@
+import { selectSetting } from "./settings";
 import { replaysStore, badReplaysStore } from "./stores";
 
 export type ReplayPlayer = {
@@ -60,6 +61,41 @@ export const selectReplaysWithPlayer = async (connectCode: string) => {
   return replays;
 };
 
+export const selectReplaysWithUser = async (possibleUsers: string[]) => {
+  // either user is set, or we find the most common one
+  const userConnectCode =
+    (await selectSetting("username")).toUpperCase() ||
+    (await getMostCommonUser(possibleUsers));
+  return {
+    userReplays: await selectReplaysWithPlayer(userConnectCode),
+    userConnectCode,
+  };
+};
+
 export const selectReplayCount = async () => {
   return await replaysStore.length();
+};
+
+export const getMostCommonUser = async (
+  possibleUsers: string[],
+): Promise<string> => {
+  const userCounts = new Map<string, number>();
+  await replaysStore.iterate((value: Replay, key) => {
+    value.players.forEach((player) => {
+      userCounts.set(
+        player.connectCode,
+        (userCounts.get(player.connectCode) || 0) + 1,
+      );
+    });
+  });
+  const firstUserValue = userCounts.get(possibleUsers[0]) || 0;
+  const secondUserValue = userCounts.get(possibleUsers[1]) || 0;
+  if (!firstUserValue && !secondUserValue) {
+    const maxValue = Math.max(...userCounts.values());
+    const maxKeys = Array.from(userCounts.entries())
+      .filter(([key, value]) => value === maxValue)
+      .map(([key]) => key);
+    return maxKeys[0];
+  }
+  return firstUserValue > secondUserValue ? possibleUsers[0] : possibleUsers[1];
 };
