@@ -157,17 +157,17 @@ export const listenForReplayFile = (directory: string) => {
         const filePath = path.join(directory, filename);
         const game = new SlippiGame(filePath);
 
-        const winners = game.getWinners();
-        if (winners.length > 0) {
-          const path = directory + "/" + filename;
-          // filename can sometimes include subdirectories of directory
-          // but just want the actual file name
-          const name = filename.split("/").pop() || filename;
-          console.log("winners", winners);
-          console.log("path:", path, "name:", name);
-          replayLoadManager.beginLoadingReplayFile({ path, name });
-          return;
-        }
+        // const winners = game.getWinners();
+        // if (winners.length > 0) {
+        //   const path = directory + "/" + filename;
+        //   // filename can sometimes include subdirectories of directory
+        //   // but just want the actual file name
+        //   const name = filename.split("/").pop() || filename;
+        //   console.log("winners", winners);
+        //   console.log("path:", path, "name:", name);
+        //   replayLoadManager.beginLoadingReplayFile({ path, name });
+        //   return;
+        // }
 
         const settings = game.getSettings();
         const players = settings?.players.map((player: any) => {

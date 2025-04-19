@@ -1,5 +1,5 @@
 import { Alert, Container, Grid, Stack } from "@mui/material";
-import { DashboardHeader } from "./DashboardHeader";
+import { DashboardHeader } from "../Headers/DashboardHeader";
 import { CurrentMatchCard } from "./CurrentMatchCard";
 import { HeadToHeadCard } from "./HeadToHeadCard";
 import { RecentMatchesCard } from "./RecentMatchesCard";
@@ -23,24 +23,24 @@ export const LiveMatchDisplay = ({
   }, [replayDirectory]);
 
   return (
-    <Container component="main" sx={{ py: 3, flex: 1 }} maxWidth="xl">
+    <Container sx={{ flex: 1 }} maxWidth="xl">
       {!replayDirectory && (
         <Alert severity="error">
           Replay directory must be set in settings.
         </Alert>
       )}
-      <ReplayInfoDisplay />
+      {/* <ReplayInfoDisplay /> */}
       <Stack spacing={1.5}>
-        <DashboardHeader />
+        {/* <DashboardHeader /> */}
         {!!currentReplayInfo?.players ? (
-          <Grid container spacing={3}>
-            <Grid size={{ sm: 12, md: 4 }}>
+          <Grid container>
+            <Grid size={{ sm: 0, lg: 1 }}></Grid>
+            <Grid size={{ sm: 12, lg: 4 }}>
               <CurrentMatchCard />
-            </Grid>
-            <Grid size={{ sm: 12, md: 4 }}>
               <UserStatsCard />
             </Grid>
-            <Grid size={{ sm: 12, md: 4 }}>
+            <Grid size={{ sm: 0, lg: 1 }}></Grid>
+            <Grid size={{ sm: 12, lg: 4 }}>
               <HeadToHeadCard />
             </Grid>
           </Grid>

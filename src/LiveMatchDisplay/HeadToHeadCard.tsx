@@ -33,7 +33,7 @@ export const HeadToHeadCard = () => {
     [headToHeadReplays, players],
   );
   return (
-    <Card sx={{ mb: 3 }}>
+    <Card sx={{ mb: 3, height: "100%" }}>
       <CardHeader
         title={
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

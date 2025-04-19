@@ -2,22 +2,37 @@ import { Box, Paper, Tooltip, Typography } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import { useReplayStore } from "@/replayStore";
+import { ReplayInfoDisplay } from "../LiveMatchDisplay/ReplayInfoDisplay";
 
 export const DashboardHeader = () => {
   const { isLoadingReplays, totalReplayCount, totalBadReplayCount } =
     useReplayStore();
+
   return (
     <Box
       sx={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        width: "100%",
       }}
     >
-      <Typography variant="h4" component="h2" sx={{ fontWeight: "bold" }}>
+      <Typography variant="h5" sx={{ fontWeight: "bold" }}>
         Dashboard
       </Typography>
-      {!isLoadingReplays && (
+      {isLoadingReplays ? (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            width: "100%",
+            ml: 1,
+          }}
+        >
+          <ReplayInfoDisplay />
+        </Box>
+      ) : (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
           <Paper sx={{ p: 1, bgcolor: "action.hover" }} variant="outlined">
             <Typography
