@@ -1,5 +1,5 @@
 import { Alert, Container, Grid, Stack } from "@mui/material";
-import { DashboardHeader } from "../Headers/DashboardHeader";
+import { DashboardHeader } from "../../Headers/DashboardHeader";
 import { CurrentMatchCard } from "./CurrentMatchCard";
 import { HeadToHeadCard } from "./HeadToHeadCard";
 import { RecentMatchesCard } from "./RecentMatchesCard";
@@ -18,10 +18,6 @@ export const LiveMatchDisplay = ({
   const { loadReplayDirectory, currentReplayInfo, isLoadingReplays } =
     useReplayStore();
 
-  useEffect(() => {
-    loadReplayDirectory(replayDirectory);
-  }, [replayDirectory]);
-
   return (
     <Container sx={{ flex: 1 }} maxWidth="xl">
       {!replayDirectory && (
@@ -29,9 +25,7 @@ export const LiveMatchDisplay = ({
           Replay directory must be set in settings.
         </Alert>
       )}
-      {/* <ReplayInfoDisplay /> */}
       <Stack spacing={1.5}>
-        {/* <DashboardHeader /> */}
         {!!currentReplayInfo?.players ? (
           <Grid container>
             <Grid size={{ sm: 0, lg: 1 }}></Grid>

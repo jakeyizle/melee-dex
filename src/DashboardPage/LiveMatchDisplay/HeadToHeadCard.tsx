@@ -214,7 +214,7 @@ export const HeadToHeadCard = () => {
 
             <Grid container spacing={2}>
               {/* Player 1 Characters */}
-              <Grid size={{ xs: 12 }}>
+              <Grid size={{ xs: 12, sm: 5.5 }}>
                 <Typography
                   variant="body2"
                   sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
@@ -245,7 +245,6 @@ export const HeadToHeadCard = () => {
                           src={getCharacterIcon(char.characterId)}
                           alt=""
                         />
-                        {/* {char.emoji} */}
                       </Box>
                       <Box sx={{ flex: 1 }}>
                         <Box
@@ -286,12 +285,12 @@ export const HeadToHeadCard = () => {
                 </Stack>
               </Grid>
 
-              <Grid size={{ xs: 12 }}>
-                <Divider sx={{ my: 0.5 }} />
+              <Grid size={{ xs: 1 }}>
+                <Divider orientation="vertical" sx={{ my: 0.5 }} />
               </Grid>
 
               {/* Player 2 Characters */}
-              <Grid size={{ xs: 12 }}>
+              <Grid size={{ xs: 12, sm: 5.5 }}>
                 <Typography
                   variant="body2"
                   sx={{ mb: 1, fontWeight: "medium", color: "secondary.main" }}

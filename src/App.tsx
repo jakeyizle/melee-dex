@@ -1,9 +1,9 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 
 import Layout from "./Layout";
-import { LiveMatchDisplay } from "./LiveMatchDisplay";
+import { LiveMatchDisplay } from "./DashboardPage/LiveMatchDisplay";
 import { SettingsPage } from "./Settings";
-import { DashboardPage } from "./DashboardPage";
+import { DashboardPage } from "./DashboardPage/DashboardPage";
 
 export default function App() {
   return (
