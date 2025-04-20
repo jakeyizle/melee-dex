@@ -1,30 +1,14 @@
-import { Replay } from "@/db/replays";
-
-type PlayerCharacter = {
-  connectCode: string;
-  characterId: string;
-};
-
-type CharacterUsageStat = {
-  characterId: string;
-  playCount: number;
-  winCount: number;
-  lossCount: number;
-  playRate: number;
-};
-
-type HeadToHeadStat = {
-  connectCode: string;
-  overallWinCount: number;
-  overallLossCount: number;
-  overallWinRate: number;
-  currentMatchUpGameCount: number;
-  currentMatchUpWinCount: number;
-  currentMatchUpLossCount: number;
-  currentMatchUpWinRate: number;
-  characterUsage: CharacterUsageStat[];
-  currentCharacterId: string;
-};
+import {
+  determineUserBasedOnLiveGame,
+  Replay,
+  selectUserAndHeadToHeadReplays,
+} from "@/db/replays";
+import {
+  CurrentReplayInfo,
+  HeadToHeadStat,
+  PlayerCharacter,
+  UserStat,
+} from "@/types";
 
 export const getHeadToHeadStats = (
   replays: Replay[],
@@ -111,34 +95,14 @@ export const getHeadToHeadStats = (
   return playerStats;
 };
 
-type UserStat = {
-  overallWinCount: number;
-  overallLossCount: number;
-  overallWinRate: number;
-
-  stageWinCount: number;
-  stageLossCount: number;
-  stageWinRate: number;
-  stageGameCount: number;
-
-  currentMatchUpGameCount: number;
-  currentMatchUpWinCount: number;
-  currentMatchUpLossCount: number;
-  currentMatchUpWinRate: number;
-
-  currentMatchUpAndStageGameCount: number;
-  currentMatchUpAndStageWinCount: number;
-  currentMatchUpAndStageLossCount: number;
-  currentMatchUpAndStageWinRate: number;
-};
-
-export const getUserStats = (
+export const getUserStat = (
   replays: Replay[],
   playerCharacters: PlayerCharacter[] | undefined,
   stageId: string,
   userConnectCode: string,
 ) => {
-  const userStats: UserStat = {
+  const userStat: UserStat = {
+    userConnectCode,
     overallWinCount: 0,
     overallLossCount: 0,
     overallWinRate: 0,
@@ -156,7 +120,7 @@ export const getUserStats = (
     currentMatchUpAndStageWinRate: 0,
   };
   if (!playerCharacters || !stageId || !userConnectCode || replays.length === 0)
-    return userStats;
+    return userStat;
 
   replays.forEach((replay) => {
     if (
@@ -190,45 +154,66 @@ export const getUserStats = (
     const isStage = replay.stageId == stageId;
     const isWin = replay.winnerConnectCode === userConnectCode;
 
-    userStats.overallWinCount += isWin ? 1 : 0;
-    userStats.overallLossCount += !isWin ? 1 : 0;
+    userStat.overallWinCount += isWin ? 1 : 0;
+    userStat.overallLossCount += !isWin ? 1 : 0;
 
-    userStats.currentMatchUpGameCount += isCurrentMatchUp ? 1 : 0;
-    userStats.currentMatchUpWinCount += isWin && isCurrentMatchUp ? 1 : 0;
-    userStats.currentMatchUpLossCount += !isWin && isCurrentMatchUp ? 1 : 0;
+    userStat.currentMatchUpGameCount += isCurrentMatchUp ? 1 : 0;
+    userStat.currentMatchUpWinCount += isWin && isCurrentMatchUp ? 1 : 0;
+    userStat.currentMatchUpLossCount += !isWin && isCurrentMatchUp ? 1 : 0;
 
-    userStats.stageGameCount += isStage ? 1 : 0;
-    userStats.stageWinCount += isWin && isStage ? 1 : 0;
-    userStats.stageLossCount += !isWin && isStage ? 1 : 0;
+    userStat.stageGameCount += isStage ? 1 : 0;
+    userStat.stageWinCount += isWin && isStage ? 1 : 0;
+    userStat.stageLossCount += !isWin && isStage ? 1 : 0;
 
-    userStats.currentMatchUpAndStageGameCount +=
+    userStat.currentMatchUpAndStageGameCount +=
       isCurrentMatchUp && isStage ? 1 : 0;
-    userStats.currentMatchUpAndStageWinCount +=
+    userStat.currentMatchUpAndStageWinCount +=
       isWin && isCurrentMatchUp && isStage ? 1 : 0;
-    userStats.currentMatchUpAndStageLossCount +=
+    userStat.currentMatchUpAndStageLossCount +=
       !isWin && isCurrentMatchUp && isStage ? 1 : 0;
   });
 
-  userStats.overallWinRate =
-    Math.round((userStats.overallWinCount / replays.length) * 100 * 10) / 10;
-  userStats.stageWinRate =
+  userStat.overallWinRate =
+    Math.round((userStat.overallWinCount / replays.length) * 100 * 10) / 10;
+  userStat.stageWinRate =
+    Math.round((userStat.stageWinCount / userStat.stageGameCount) * 100 * 10) /
+    10;
+  userStat.currentMatchUpWinRate =
     Math.round(
-      (userStats.stageWinCount / userStats.stageGameCount) * 100 * 10,
-    ) / 10;
-  userStats.currentMatchUpWinRate =
-    Math.round(
-      (userStats.currentMatchUpWinCount / userStats.currentMatchUpGameCount) *
+      (userStat.currentMatchUpWinCount / userStat.currentMatchUpGameCount) *
         100 *
         10,
     ) / 10;
 
-  userStats.currentMatchUpAndStageWinRate =
+  userStat.currentMatchUpAndStageWinRate =
     Math.round(
-      (userStats.currentMatchUpAndStageWinCount /
-        userStats.currentMatchUpAndStageGameCount) *
+      (userStat.currentMatchUpAndStageWinCount /
+        userStat.currentMatchUpAndStageGameCount) *
         100 *
         10,
     ) / 10;
 
-  return userStats;
+  return userStat;
+};
+
+export const getStats = async (currentReplay: CurrentReplayInfo) => {
+  const replayPlayers = currentReplay.players;
+  const user = await determineUserBasedOnLiveGame(
+    replayPlayers.map((player) => player.connectCode),
+  );
+  const { userReplays, headToHeadReplays } =
+    await selectUserAndHeadToHeadReplays(
+      user,
+      replayPlayers.map((p) => p.connectCode),
+    );
+
+  const userStat = getUserStat(
+    userReplays,
+    replayPlayers,
+    currentReplay.stageId,
+    user,
+  );
+  const headToHeadStats = getHeadToHeadStats(headToHeadReplays, replayPlayers);
+
+  return { userStat, headToHeadStats };
 };

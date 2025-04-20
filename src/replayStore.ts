@@ -6,16 +6,21 @@ import {
   selectReplaysWithBothPlayers,
   selectReplaysWithUser,
 } from "@/db/replays";
-import { CurrentReplayInfo, LiveReplayPlayers } from "@/types";
+import {
+  CurrentReplayInfo,
+  HeadToHeadStat,
+  LiveReplayPlayers,
+  UserStat,
+} from "@/types";
 import { selectAllReplayNames } from "@/db/replays";
+import { getStats } from "./utils/statUtils";
 
 type ReplayStore = {
   // Shared state
-  userReplays: Replay[];
-  headToHeadReplays: Replay[];
   currentReplayInfo: CurrentReplayInfo | null;
   currentLiveFileName: string;
-  currentUserConnectCode: string;
+  userStat: UserStat | null;
+  headToHeadStats: HeadToHeadStat[];
 
   // Load progress
   isLoadingReplays: boolean;
@@ -35,11 +40,10 @@ type ReplayStore = {
 };
 
 export const useReplayStore = create<ReplayStore>((set, get) => ({
-  userReplays: [],
-  headToHeadReplays: [],
   currentReplayInfo: null,
   currentLiveFileName: "",
-  currentUserConnectCode: "",
+  userStat: null,
+  headToHeadStats: [],
 
   isLoadingReplays: false,
   currentReplaysLoaded: 0,
@@ -61,24 +65,13 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
   handleLiveReplay: async ({ filename, players, stageId }) => {
     const currentLiveFileName = get().currentLiveFileName;
 
-    console.log("handleLiveReplay", filename, currentLiveFileName);
     if (filename === currentLiveFileName) return;
-
-    const { userConnectCode, userReplays } = await selectReplaysWithUser(
-      players.map((p) => p.connectCode),
-    );
-
-    const headToHeadReplays = await selectReplaysWithBothPlayers([
-      players[0].connectCode,
-      players[1].connectCode,
-    ]);
-
+    const { userStat, headToHeadStats } = await getStats({ players, stageId });
     set({
-      userReplays,
-      headToHeadReplays,
+      userStat,
+      headToHeadStats,
       currentReplayInfo: { players, stageId },
       currentLiveFileName: filename,
-      currentUserConnectCode: userConnectCode,
     });
   },
 }));
@@ -105,30 +98,24 @@ export const setupReplayStoreIpcListeners = () => {
 
   window.ipcRenderer.on("end-loading-replays", async (_event, args) => {
     console.log("end-loading-replays", args);
-    const { currentReplayInfo } = getState();
-    const headToHeadReplays = currentReplayInfo
-      ? await selectReplaysWithBothPlayers([
-          currentReplayInfo.players[0].connectCode,
-          currentReplayInfo.players[1].connectCode,
-        ])
-      : [];
-
-    const { userReplays, userConnectCode } = await selectReplaysWithUser(
-      currentReplayInfo?.players.map((p) => p.connectCode) || [],
-    );
-
     const totalReplayCount = await selectReplayCount();
     const totalBadReplayCount = await selectBadReplayCount();
+    const { currentReplayInfo } = getState();
+    let { userStat, headToHeadStats } = !!currentReplayInfo
+      ? await getStats(currentReplayInfo)
+      : {
+          userStat: null,
+          headToHeadStats: [],
+        };
     setState({
       isLoadingReplays: false,
       currentReplaysLoaded: 0,
       totalReplaysToLoad: 0,
       replaysPerSecond: 0,
-      headToHeadReplays,
-      userReplays,
       totalReplayCount,
       totalBadReplayCount,
-      currentUserConnectCode: userConnectCode,
+      userStat,
+      headToHeadStats,
     });
   });
 };

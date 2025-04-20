@@ -103,3 +103,44 @@ export const getMostCommonUser = async (
 export const selectBadReplayCount = async () => {
   return await badReplaysStore.length();
 };
+
+export const selectUserAndHeadToHeadReplays = async (
+  userConnectCode: string,
+  liveGameConnectCodes: string[],
+) => {
+  // combining fetching user replays and head to head replays in one function for performance
+  let userReplays: Replay[] = [];
+  let headToHeadReplays: Replay[] = [];
+
+  await replaysStore.iterate((replay: Replay, key) => {
+    const isUserReplay = replay.players.some((player) => {
+      return player.connectCode === userConnectCode;
+    });
+    if (!isUserReplay) return undefined;
+
+    const isHeadToHeadReplay = liveGameConnectCodes.every((connectCode) => {
+      return replay.players.some((player) => {
+        return player.connectCode === connectCode;
+      });
+    });
+
+    isUserReplay && userReplays.push(replay);
+    isHeadToHeadReplay && headToHeadReplays.push(replay);
+  });
+  return { userReplays, headToHeadReplays };
+};
+
+export const determineUserBasedOnLiveGame = async (
+  liveGameConnectCodes: string[],
+) => {
+  // probably overcomplicating this
+  // get user from setttings -> make sure they are in the current live replay
+  // if not, return whichever player in the current live replay has most replays
+  // if tied, return first player
+
+  const userConnectCode = (await selectSetting("username")).toUpperCase();
+  if (liveGameConnectCodes.includes(userConnectCode)) return userConnectCode;
+
+  const mostCommonUser = await getMostCommonUser(liveGameConnectCodes);
+  return mostCommonUser;
+};

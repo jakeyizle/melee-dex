@@ -1,6 +1,3 @@
-import { Replay } from "@/db/replays";
-import { LiveReplayPlayers } from "@/types";
-import { getHeadToHeadStats } from "@/utils/statUtils";
 import {
   Typography,
   Box,
@@ -13,25 +10,14 @@ import {
   Divider,
 } from "@mui/material";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-
-import { useMemo } from "react";
 import { getCharacterNameFromId } from "@/utils/meleeIdUtils";
 import { getCharacterIcon } from "@/assets/characterIcons/getCharacterIcon";
 import { useReplayStore } from "@/replayStore";
 
 export const HeadToHeadCard = () => {
-  const { currentReplayInfo, headToHeadReplays } = useReplayStore();
-
-  const players = useMemo(
-    () => currentReplayInfo?.players,
-    [currentReplayInfo],
-  );
-  if (!players) return null;
-  console.log(headToHeadReplays);
-  const headToHeadStats = useMemo(
-    () => getHeadToHeadStats(headToHeadReplays, players),
-    [headToHeadReplays, players],
-  );
+  const { headToHeadStats } = useReplayStore();
+  const numberOfGames =
+    headToHeadStats[0].overallWinCount + headToHeadStats[0].overallLossCount;
   return (
     <Card sx={{ mb: 3, height: "100%" }}>
       <CardHeader
@@ -49,8 +35,8 @@ export const HeadToHeadCard = () => {
           {/* Overall W/L Record */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-              {`Overall Record (${headToHeadReplays.length} ${
-                headToHeadReplays.length === 1 ? "game" : "games"
+              {`Overall Record (${numberOfGames} ${
+                numberOfGames === 1 ? "game" : "games"
               })`}
             </Typography>
             <Paper sx={{ p: 2, bgcolor: "rgba(255, 255, 255, 0.05)" }}>
@@ -69,7 +55,7 @@ export const HeadToHeadCard = () => {
                     {headToHeadStats[0].overallWinCount}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {players[0].connectCode}
+                    {headToHeadStats[0].connectCode}
                   </Typography>
                 </Box>
                 <Box sx={{ textAlign: "center" }}>
@@ -80,7 +66,7 @@ export const HeadToHeadCard = () => {
                     {headToHeadStats[1].overallWinCount}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {players[1].connectCode}
+                    {headToHeadStats[1].connectCode}
                   </Typography>
                 </Box>
               </Box>
@@ -130,7 +116,7 @@ export const HeadToHeadCard = () => {
           {/* Current Matchup W/L Record */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
-              {`${getCharacterNameFromId(players[0].characterId)} vs. ${getCharacterNameFromId(players[1].characterId)}`}
+              {`${getCharacterNameFromId(headToHeadStats[0].currentCharacterId)} vs. ${getCharacterNameFromId(headToHeadStats[1].currentCharacterId)}`}
             </Typography>
             <Paper sx={{ p: 2, bgcolor: "rgba(255, 255, 255, 0.05)" }}>
               <Box
@@ -148,7 +134,7 @@ export const HeadToHeadCard = () => {
                     {headToHeadStats[0].currentMatchUpWinCount}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {`${getCharacterNameFromId(players[0].characterId)} wins`}
+                    {`${getCharacterNameFromId(headToHeadStats[0].currentCharacterId)} wins`}
                   </Typography>
                 </Box>
                 <Box sx={{ textAlign: "center" }}>
@@ -159,7 +145,7 @@ export const HeadToHeadCard = () => {
                     {headToHeadStats[1].currentMatchUpWinCount}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {`${getCharacterNameFromId(players[1].characterId)} wins`}
+                    {`${getCharacterNameFromId(headToHeadStats[1].currentCharacterId)} wins`}
                   </Typography>
                 </Box>
               </Box>
@@ -219,7 +205,7 @@ export const HeadToHeadCard = () => {
                   variant="body2"
                   sx={{ mb: 1, fontWeight: "medium", color: "primary.main" }}
                 >
-                  {players[0].connectCode}
+                  {headToHeadStats[0].connectCode}
                 </Typography>
                 <Stack spacing={1}>
                   {headToHeadStats[0].characterUsage.map((char) => (
@@ -295,7 +281,7 @@ export const HeadToHeadCard = () => {
                   variant="body2"
                   sx={{ mb: 1, fontWeight: "medium", color: "secondary.main" }}
                 >
-                  {players[1].connectCode}
+                  {headToHeadStats[1].connectCode}
                 </Typography>
                 <Stack spacing={1}>
                   {headToHeadStats[1].characterUsage.map((char) => (

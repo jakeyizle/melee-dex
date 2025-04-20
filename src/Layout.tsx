@@ -32,7 +32,7 @@ const theme = createTheme({
   },
 });
 
-const drawerWidth = 240;
+const drawerWidth = 0;
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -77,7 +77,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Toolbar>
         </AppBar>
 
-        <Drawer
+        {/* <Drawer
           variant="permanent"
           sx={{
             width: drawerWidth,
@@ -91,7 +91,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           open
         >
           {drawer}
-        </Drawer>
+        </Drawer> */}
         <Box
           component="main"
           sx={{
