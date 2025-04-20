@@ -10,15 +10,11 @@ import {
   AlertTitle,
   Button,
 } from "@mui/material";
+import { LoadProgressBar } from "./LoadProgressBar";
 
 export const ReplayLoadInProgressCard = () => {
   const { currentReplaysLoaded, totalReplaysToLoad, replaysPerSecond } =
     useReplayStore();
-
-  const loadProgress =
-    totalReplaysToLoad === 0
-      ? 0
-      : Math.round((currentReplaysLoaded / totalReplaysToLoad) * 100);
 
   return (
     <Card sx={{ maxWidth: 800, mx: "auto", mt: 4 }}>
@@ -37,33 +33,11 @@ export const ReplayLoadInProgressCard = () => {
           </Typography>
         </Box>
 
-        <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="subtitle2"
-            sx={{ mb: 1, display: "flex", justifyContent: "space-between" }}
-          >
-            <span>Progress</span>
-            <span>{loadProgress}%</span>
-          </Typography>
-          <LinearProgress
-            variant="determinate"
-            value={loadProgress}
-            sx={{
-              height: 10,
-              borderRadius: 1,
-              bgcolor: "rgba(255, 255, 255, 0.1)",
-            }}
-          />
-
-          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Replays processed: {currentReplaysLoaded} / {totalReplaysToLoad}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {replaysPerSecond} replays per second
-            </Typography>
-          </Box>
-        </Box>
+        <LoadProgressBar
+          current={currentReplaysLoaded}
+          total={totalReplaysToLoad}
+          perSecondRate={replaysPerSecond}
+        />
 
         <Alert severity="info" sx={{ mb: 3 }}>
           <AlertTitle>Listening for new games is disabled</AlertTitle>

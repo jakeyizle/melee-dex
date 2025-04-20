@@ -24,10 +24,7 @@ export const RecentMatchRow = ({
     replay.players.find((player) => player.connectCode !== userConnectCode)
       ?.characterId || "";
   const otherCharacterName = getCharacterNameFromId(otherCharacterId);
-  // if matchDate is < 1 minute, show number of seconds ago
-  // if matchDate is < 1 hour, show number of minutes ago
-  // if matchDate is < 1 day, show number of hours ago
-  // if matchDate is > 1 day, show date in mm/dd/yy hh:mm
+
   const getTimeString = (matchDate: string) => {
     const date = new Date(matchDate);
     const now = new Date();

@@ -12,7 +12,6 @@ export const DashboardPage = () => {
   const [replayDirectory, setReplayDirectory] = useState("");
   const [hasLoadedReplayDirectory, setHasLoadedReplayDirectory] =
     useState(false);
-  console.log(!!currentReplayInfo);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -30,5 +29,5 @@ export const DashboardPage = () => {
   if (!replayDirectory) return <NoReplayDirectoryCard />;
   if (isLoadingReplays) return <ReplayLoadInProgressCard />;
   if (!currentReplayInfo) return <ListeningForReplayCard />;
-  return <LiveMatchDisplay replayDirectory={replayDirectory} />;
+  return <LiveMatchDisplay />;
 };
