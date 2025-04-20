@@ -20,7 +20,7 @@ export const HeadToHeadCard = () => {
     headToHeadStats[0].overallWinCount + headToHeadStats[0].overallLossCount;
 
   return (
-    <Card sx={{ mb: 3, height: "100%" }}>
+    <Card sx={{ height: "100%" }}>
       <CardHeader
         title={
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -29,6 +29,7 @@ export const HeadToHeadCard = () => {
             </Typography>
           </Box>
         }
+        subheader={`${numberOfGames} ${numberOfGames === 1 ? "game" : "games"} played`}
       />
       {headToHeadStats.length > 0 && currentReplayInfo ? (
         <CardContent>

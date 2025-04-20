@@ -117,6 +117,10 @@ export const getHeadToHeadStats = (
     // sort character usage by play count and keep only top 3
     playerStat.characterUsage.sort((a, b) => b.playCount - a.playCount);
     playerStat.characterUsage = playerStat.characterUsage.slice(0, 3);
+    // for testing - repeat character usage for testing
+    // for (let i = 0; i < 3; i++) {
+    //   playerStat.characterUsage[i] = playerStat.characterUsage[0];
+    // }
 
     playerStat.characterUsage.forEach((characterUsage) => {
       characterUsage.playRate =
@@ -251,5 +255,15 @@ export const getStats = async (currentReplay: CurrentReplayInfo) => {
     currentReplay.stageId,
   );
 
-  return { userStat, headToHeadStats };
+  return { userStat, headToHeadStats, headToHeadReplays };
+};
+
+export const getMostRecentMatches = (
+  replays: Replay[],
+  numberOfReplays: number,
+) => {
+  const sortedReplays = replays.sort((a, b) => {
+    return new Date(b.date).getTime() - new Date(a.date).getTime();
+  });
+  return sortedReplays.slice(0, numberOfReplays);
 };

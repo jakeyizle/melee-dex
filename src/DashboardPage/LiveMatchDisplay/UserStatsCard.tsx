@@ -22,6 +22,8 @@ export const UserStatsCard = () => {
   if (!userStat || !currentReplayInfo)
     return <Typography>No stats found</Typography>;
 
+  console.log("userStat", userStat);
+  console.log("currentReplayInfo", currentReplayInfo);
   const player = currentReplayInfo.players.find(
     (player) => player.connectCode === userStat.userConnectCode,
   )!;
@@ -44,7 +46,6 @@ export const UserStatsCard = () => {
         }
       />
       <CardContent>
-        {/* <Stack spacing={2}> */}
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6 }}>
             <Paper
@@ -272,7 +273,6 @@ export const UserStatsCard = () => {
             </Paper>
           </Grid>
         </Grid>
-        {/* </Stack> */}
       </CardContent>
     </Card>
   );
