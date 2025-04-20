@@ -31,6 +31,14 @@ export type HeadToHeadStat = {
   currentMatchUpWinCount: number;
   currentMatchUpLossCount: number;
   currentMatchUpWinRate: number;
+  stageGameCount: number;
+  stageWinCount: number;
+  stageLossCount: number;
+  stageWinRate: number;
+  currentMatchUpAndStageGameCount: number;
+  currentMatchUpAndStageWinCount: number;
+  currentMatchUpAndStageLossCount: number;
+  currentMatchUpAndStageWinRate: number;
   characterUsage: CharacterUsageStat[];
   currentCharacterId: string;
 };
