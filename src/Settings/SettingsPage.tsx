@@ -50,6 +50,7 @@ export const SettingsPage = () => {
     if (directory) {
       setDirectoryErrorText("");
       setReplayDirectory(directory);
+      upsertSettings([{ key: "replayDirectory", value: replayDirectory }]);
     }
   };
 
@@ -71,6 +72,12 @@ export const SettingsPage = () => {
     } else {
       setDeleteError(true);
     }
+  };
+
+  const handleConnectCodeChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    upsertSettings([{ key: "username", value: event.target.value }]);
   };
 
   const handleSaveSettings = () => {
@@ -150,7 +157,7 @@ export const SettingsPage = () => {
                     fullWidth
                     placeholder="Enter your Slippi connect code..."
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    onChange={handleConnectCodeChange}
                   />
                 </FormControl>
                 <Typography variant="body2" color="text.secondary">
@@ -159,7 +166,7 @@ export const SettingsPage = () => {
                 </Typography>
               </Box>
             </CardContent>
-            <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
+            {/* <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
               <Button
                 variant="contained"
                 color="primary"
@@ -167,9 +174,9 @@ export const SettingsPage = () => {
               >
                 Save Settings
               </Button>
-            </CardActions>
+            </CardActions> */}
 
-            <Divider sx={{ mx: 2 }} />
+            <Divider sx={{ mx: 2, my: 2 }} />
             <Box sx={{ p: 2 }}>
               <Typography variant="h6" sx={{ mb: 2, color: "error.main" }}>
                 Danger Zone

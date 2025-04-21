@@ -1,20 +1,9 @@
-import {
-  Typography,
-  Box,
-  Card,
-  CardHeader,
-  CardContent,
-  Paper,
-  Grid,
-} from "@mui/material";
-import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import {
-  getCharacterNameFromId,
-  getStageNameFromId,
-} from "@/utils/meleeIdUtils";
+import { Typography, Box, Card, CardHeader } from "@mui/material";
+
 import { useReplayStore } from "@/replayStore";
 import { HeadToHeadCardContent } from "./HeadToHeadCardContent";
 import { HeadToHeadEmptyCardContent } from "./HeadToHeadEmptyCardContent";
+import { NewHeadToHeadCardContent } from "./NewHeadToHeadCardContent";
 
 export const HeadToHeadCard = () => {
   const { headToHeadStats, currentReplayInfo } = useReplayStore();
@@ -37,7 +26,11 @@ export const HeadToHeadCard = () => {
         subheader={numberOfGamesText}
       />
       {currentReplayInfo && headToHeadStats.length > 0 ? (
-        <HeadToHeadCardContent
+        // <HeadToHeadCardContent
+        //   headToHeadStats={headToHeadStats}
+        //   stageId={currentReplayInfo.stageId}
+        // />
+        <NewHeadToHeadCardContent
           headToHeadStats={headToHeadStats}
           stageId={currentReplayInfo.stageId}
         />

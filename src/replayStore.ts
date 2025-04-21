@@ -57,7 +57,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
   loadReplayDirectory: async (replayDirectory) => {
     if (!replayDirectory) return;
     const existingReplayNames = await selectAllReplayNames();
-    window.ipcRenderer.invoke("begin-loading-replays", {
+    await window.ipcRenderer.invoke("begin-loading-replays", {
       replayDirectory,
       existingReplayNames,
     });

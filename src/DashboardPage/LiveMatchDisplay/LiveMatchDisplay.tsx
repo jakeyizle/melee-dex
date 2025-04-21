@@ -7,7 +7,7 @@ import { RecentMatchesCard } from "./RecentMatchesCard";
 export const LiveMatchDisplay = () => {
   return (
     <Container sx={{ flex: 1 }} maxWidth="xl">
-      <Grid container spacing={2}>
+      <Grid container spacing={4}>
         <Grid size={{ sm: 12, lg: 4 }}>
           <CurrentMatchCard />
         </Grid>

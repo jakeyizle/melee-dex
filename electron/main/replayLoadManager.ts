@@ -1,14 +1,16 @@
+import fs from "node:fs";
+import path from "node:path";
 import { WebContents } from "electron";
 import {
   createInvisWindow,
   getBatchSize,
   getNumberOfWorkers,
   getReplayFiles,
-  listenForReplayFile,
   mainWindow,
   ReplayFile,
-  stopListeningForReplayFile,
 } from "./utils";
+import { require } from "./vite_constants";
+const { SlippiGame } = require("@slippi/slippi-js");
 
 export class ReplayLoadManager {
   private static instance: ReplayLoadManager | null = null;
@@ -20,6 +22,8 @@ export class ReplayLoadManager {
   private batchSize = 0;
   private startTimestamp = 0;
   private replayDirectory = "";
+  private watcher: fs.FSWatcher | null = null;
+
   private constructor() {}
 
   public static getInstance() {
@@ -33,7 +37,6 @@ export class ReplayLoadManager {
     replayDirectory: string | undefined,
     existingReplayNames: string[],
   ) {
-    console.log("beginLoadingReplayDirectory", this.isLoadingReplays);
     if (!replayDirectory) return;
     if (this.isLoadingReplays) return;
     this.isLoadingReplays = true;
@@ -48,7 +51,7 @@ export class ReplayLoadManager {
       this.endLoadingReplays();
       return;
     }
-    stopListeningForReplayFile();
+    this.stopListeningForReplayFile();
 
     this.totalReplaysToLoad = newReplays.length;
     this.currentReplaysLoaded = 0;
@@ -84,7 +87,7 @@ export class ReplayLoadManager {
       this.workerWebContents.length,
     );
     if (this.isLoadingReplays) return;
-    stopListeningForReplayFile();
+
     this.replayFiles = [file];
     this.isLoadingReplays = true;
     this.totalReplaysToLoad = 1;
@@ -105,7 +108,7 @@ export class ReplayLoadManager {
     if (this.workerWebContents.length <= 1 || !webContents) {
       this.isLoadingReplays = false;
       mainWindow?.webContents.send("end-loading-replays");
-      listenForReplayFile(this.replayDirectory);
+      this.listenForReplayFile(this.replayDirectory);
       return;
     }
     webContents.close();
@@ -128,4 +131,49 @@ export class ReplayLoadManager {
       replaysPerSecond: replaysPerSecond,
     });
   }
+
+  listenForReplayFile = (directory: string) => {
+    this.watcher?.close();
+    this.watcher = fs.watch(
+      directory,
+      { recursive: true },
+      (event, filename) => {
+        if (filename && !this.isLoadingReplays) {
+          try {
+            const filePath = path.join(directory, filename);
+            const game = new SlippiGame(filePath);
+
+            // const winners = game.getWinners();
+            // if (winners.length > 0) {
+            //   const path = directory + "/" + filename;
+            //   // filename can sometimes include subdirectories of directory
+            //   // but just want the actual file name
+            //   const name = filename.split("/").pop() || filename;
+            //   this.beginLoadingReplayFile({ path, name });
+            //   return;
+            // }
+
+            const settings = game.getSettings();
+            const players = settings?.players.map((player: any) => {
+              return {
+                connectCode: player.connectCode,
+                name: player.displayName,
+                characterId: (player.characterId || 0).toString(),
+              };
+            });
+            const stageId = settings.stageId;
+            mainWindow?.webContents.send("live-replay-loaded", {
+              filename,
+              players,
+              stageId,
+            });
+          } catch (_e) {}
+        }
+      },
+    );
+  };
+
+  stopListeningForReplayFile = () => {
+    this.watcher?.close();
+  };
 }

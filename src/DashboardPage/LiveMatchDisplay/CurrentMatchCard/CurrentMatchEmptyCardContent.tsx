@@ -1,4 +1,4 @@
-import { Typography, Box, CardContent } from "@mui/material";
+import { Box, CardContent } from "@mui/material";
 
 export const CurrentMatchEmptyCardContent = () => {
   return (

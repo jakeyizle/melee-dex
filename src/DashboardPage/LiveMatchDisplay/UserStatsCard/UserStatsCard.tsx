@@ -1,21 +1,6 @@
-import {
-  Card,
-  CardHeader,
-  Box,
-  Typography,
-  CardContent,
-  Stack,
-  Paper,
-  Grid,
-} from "@mui/material";
-import PersonIcon from "@mui/icons-material/Person";
+import { Card, CardHeader, Box, Typography } from "@mui/material";
 import { useReplayStore } from "@/replayStore";
-import { getUserStat } from "@/utils/statUtils";
-import { useMemo } from "react";
-import {
-  getCharacterNameFromId,
-  getStageNameFromId,
-} from "@/utils/meleeIdUtils";
+import { getCharacterNameFromId } from "@/utils/meleeIdUtils";
 import { UserStatsCardContent } from "./UserStatsCardContent";
 import { UserStatsCardEmptyContent } from "./UserStatsCardEmptyContent";
 
@@ -38,16 +23,20 @@ export const UserStatsCard = () => {
     ? `Your Stats Playing ${characterName}`
     : "Your Stats";
 
+  const subheader = userStat
+    ? `${userStat.overallWinCount + userStat.overallLossCount} games played`
+    : "";
   return (
     <Card>
       <CardHeader
         title={
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               {title}
             </Typography>
           </Box>
         }
+        subheader={subheader}
       />
       {userStat && otherCharacterName && stageId ? (
         <UserStatsCardContent

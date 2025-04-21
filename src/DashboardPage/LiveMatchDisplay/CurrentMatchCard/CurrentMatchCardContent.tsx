@@ -1,12 +1,8 @@
-import { CurrentReplayInfo, HeadToHeadStat, LiveReplayPlayers } from "@/types";
+import { CurrentReplayInfo, HeadToHeadStat } from "@/types";
 import {
   Typography,
   Box,
-  Card,
-  CardHeader,
   CardContent,
-  Paper,
-  Container,
   Divider,
   Grid,
   Stack,
@@ -16,8 +12,6 @@ import {
   getCharacterNameFromId,
   getStageNameFromId,
 } from "@/utils/meleeIdUtils";
-import { useReplayStore } from "@/replayStore";
-import { RecentMatchesCard } from "../RecentMatchesCard/RecentMatchesCard";
 
 interface CurrentMatchCardContentProps {
   currentReplayInfo: CurrentReplayInfo;

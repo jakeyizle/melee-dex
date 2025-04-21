@@ -1,15 +1,5 @@
 import { useReplayStore } from "@/replayStore";
-import { getMostRecentMatches } from "@/utils/statUtils";
-import {
-  Typography,
-  Box,
-  Card,
-  CardHeader,
-  CardContent,
-  Paper,
-  Stack,
-} from "@mui/material";
-import { RecentMatchRow } from "./RecentMatchRow";
+import { Typography, Card, CardHeader } from "@mui/material";
 import { RecentMatchesCardEmptyContent } from "./RecentMatchesCardEmptyCardContent";
 import { RecentMatchesCardContent } from "./RecentMatchesCardContent";
 
@@ -26,7 +16,7 @@ export const RecentMatchesCard = () => {
       <CardHeader
         title={
           <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-            Last 5 Matches
+            Last 3 Matches
           </Typography>
         }
         subheader={subheader}
@@ -35,7 +25,6 @@ export const RecentMatchesCard = () => {
         <RecentMatchesCardContent
           headToHeadReplays={headToHeadReplays}
           userStat={userStat}
-          otherPlayerCode={otherPlayerCode}
         />
       ) : (
         <RecentMatchesCardEmptyContent />

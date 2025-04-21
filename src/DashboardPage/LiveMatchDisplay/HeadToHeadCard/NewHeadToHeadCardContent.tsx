@@ -1,18 +1,19 @@
-import { Box, Typography, CardContent, Paper, Grid } from "@mui/material";
-import { getStageNameFromId } from "@/utils/meleeIdUtils";
-import { UserStat } from "@/types";
+import { HeadToHeadStat } from "@/types";
+import {
+  getCharacterNameFromId,
+  getStageNameFromId,
+} from "@/utils/meleeIdUtils";
+import { CardContent, Grid, Paper, Typography, Box } from "@mui/material";
 
-interface UserStatsCardContentProps {
-  userStat: UserStat;
-  otherCharacterName: string;
+interface HeadToHeadCardContentProps {
+  headToHeadStats: HeadToHeadStat[];
   stageId: string;
 }
 
-export const UserStatsCardContent = ({
-  userStat,
-  otherCharacterName,
+export const NewHeadToHeadCardContent = ({
+  headToHeadStats,
   stageId,
-}: UserStatsCardContentProps) => {
+}: HeadToHeadCardContentProps) => {
   return (
     <CardContent>
       <Grid container spacing={2}>
@@ -37,7 +38,7 @@ export const UserStatsCardContent = ({
               }}
             >
               <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-                {userStat.overallWinRate}%
+                {headToHeadStats[0].overallWinRate}%
               </Typography>
               <Box
                 sx={{
@@ -47,8 +48,8 @@ export const UserStatsCardContent = ({
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  {userStat.overallWinCount} wins - {userStat.overallLossCount}{" "}
-                  losses
+                  {headToHeadStats[0].overallWinCount} wins -{" "}
+                  {headToHeadStats[0].overallLossCount} losses
                 </Typography>
                 <Box
                   sx={{
@@ -63,7 +64,7 @@ export const UserStatsCardContent = ({
                   <Box
                     sx={{
                       height: "100%",
-                      width: `${userStat.overallWinRate}%`,
+                      width: `${headToHeadStats[0].overallWinRate}%`,
                       bgcolor: "#6366f1",
                     }}
                   />
@@ -83,7 +84,7 @@ export const UserStatsCardContent = ({
             }}
           >
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              vs {otherCharacterName}
+              vs {getCharacterNameFromId(headToHeadStats[1].currentCharacterId)}
             </Typography>
             <Box
               sx={{
@@ -93,7 +94,7 @@ export const UserStatsCardContent = ({
               }}
             >
               <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-                {userStat.currentMatchUpWinRate}%
+                {headToHeadStats[0].currentMatchUpWinRate}%
               </Typography>
               <Box
                 sx={{
@@ -103,8 +104,8 @@ export const UserStatsCardContent = ({
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  {userStat.currentMatchUpWinCount} wins -{" "}
-                  {userStat.currentMatchUpLossCount} losses
+                  {headToHeadStats[0].currentMatchUpWinCount} wins -{" "}
+                  {headToHeadStats[0].currentMatchUpLossCount} losses
                 </Typography>
                 <Box
                   sx={{
@@ -119,7 +120,7 @@ export const UserStatsCardContent = ({
                   <Box
                     sx={{
                       height: "100%",
-                      width: `${userStat.currentMatchUpWinRate}%`,
+                      width: `${headToHeadStats[0].currentMatchUpWinRate}%`,
                       bgcolor: "#f59e0b",
                     }}
                   />
@@ -149,7 +150,7 @@ export const UserStatsCardContent = ({
               }}
             >
               <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-                {userStat.stageWinRate}%
+                {headToHeadStats[0].stageWinRate}%
               </Typography>
               <Box
                 sx={{
@@ -159,8 +160,8 @@ export const UserStatsCardContent = ({
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  {userStat.stageWinCount} wins - {userStat.stageLossCount}{" "}
-                  losses
+                  {headToHeadStats[0].stageWinCount} wins -{" "}
+                  {headToHeadStats[0].stageLossCount} losses
                 </Typography>
                 <Box
                   sx={{
@@ -175,7 +176,7 @@ export const UserStatsCardContent = ({
                   <Box
                     sx={{
                       height: "100%",
-                      width: `${userStat.stageWinRate}%`,
+                      width: `${headToHeadStats[0].stageWinRate}%`,
                       bgcolor: "#10b981",
                     }}
                   />
@@ -195,7 +196,8 @@ export const UserStatsCardContent = ({
             }}
           >
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              vs {otherCharacterName} on {getStageNameFromId(stageId)}
+              vs {getCharacterNameFromId(headToHeadStats[1].currentCharacterId)}{" "}
+              on {getStageNameFromId(stageId)}
             </Typography>
             <Box
               sx={{
@@ -205,7 +207,7 @@ export const UserStatsCardContent = ({
               }}
             >
               <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-                {userStat.currentMatchUpAndStageWinRate}%
+                {headToHeadStats[0].currentMatchUpAndStageWinRate}%
               </Typography>
               <Box
                 sx={{
@@ -215,8 +217,8 @@ export const UserStatsCardContent = ({
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  {userStat.currentMatchUpAndStageWinCount} wins -{" "}
-                  {userStat.currentMatchUpAndStageLossCount} losses
+                  {headToHeadStats[0].currentMatchUpAndStageWinCount} wins -{" "}
+                  {headToHeadStats[0].currentMatchUpAndStageLossCount} losses
                 </Typography>
                 <Box
                   sx={{
@@ -231,7 +233,7 @@ export const UserStatsCardContent = ({
                   <Box
                     sx={{
                       height: "100%",
-                      width: `${userStat.currentMatchUpAndStageWinRate}%`,
+                      width: `${headToHeadStats[0].currentMatchUpAndStageWinRate}%`,
                       bgcolor: "#8b5cf6",
                     }}
                   />

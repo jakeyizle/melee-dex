@@ -5,6 +5,8 @@ import { useReplayStore } from "../replayStore";
 import { NoReplayDirectoryCard } from "./NoReplayDirectoryCard";
 import { ReplayLoadInProgressCard } from "./ReplayLoadInProgressCard";
 import { ListeningForReplayCard } from "./ListeningForReplayCard";
+import { CircularProgress } from "@mui/material";
+import { LoadingDashboardCard } from "./LoadingDashboardCard";
 
 export const DashboardPage = () => {
   const { isLoadingReplays, currentReplayInfo, loadReplayDirectory } =
@@ -18,14 +20,14 @@ export const DashboardPage = () => {
       const { replayDirectory } = await selectAllSettings();
 
       setReplayDirectory(replayDirectory);
-      loadReplayDirectory(replayDirectory);
+      // the await does help with loading
+      await loadReplayDirectory(replayDirectory);
       setHasLoadedReplayDirectory(true);
     };
-    setHasLoadedReplayDirectory(false);
     fetchSettings();
   }, []);
 
-  if (!hasLoadedReplayDirectory) return null;
+  if (!hasLoadedReplayDirectory) return <LoadingDashboardCard />;
   if (!replayDirectory) return <NoReplayDirectoryCard />;
   if (isLoadingReplays) return <ReplayLoadInProgressCard />;
   if (!currentReplayInfo) return <ListeningForReplayCard />;

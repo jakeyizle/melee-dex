@@ -1,9 +1,4 @@
 import { ipcMain, dialog } from "electron";
-import {
-  listenForReplayFile,
-  mainWindow,
-  stopListeningForReplayFile,
-} from "./utils";
 import { ReplayLoadManager } from "./replayLoadManager";
 const replayLoadManager = ReplayLoadManager.getInstance();
 
@@ -47,14 +42,4 @@ ipcMain.handle("replay-loaded", (event, args: { batch: number }) => {
   const { batch } = args;
 
   replayLoadManager.updateReplayLoadProgress(batch);
-});
-
-ipcMain.handle("listen-for-new-replays", (event, args) => {
-  const { replayDirectory } = args;
-  if (!replayDirectory) return;
-  listenForReplayFile(replayDirectory);
-});
-
-ipcMain.handle("stop-listening-for-new-replays", () => {
-  stopListeningForReplayFile();
 });

@@ -8,17 +8,13 @@ import {
   VITE_DEV_SERVER_URL,
   INDEX_HTML,
 } from "./vite_constants";
-import { ReplayLoadManager } from "./replayLoadManager";
 import path from "node:path";
 import { update } from "./update";
-import { require } from "./vite_constants";
-const { SlippiGame } = require("@slippi/slippi-js");
 
 const NUM_CORES = os.cpus().length;
 export type ReplayFile = { path: string; name: string };
 
 export let mainWindow: BrowserWindow | null = null;
-const replayLoadManager = ReplayLoadManager.getInstance();
 
 async function getFiles(path = "./") {
   // add "/" to the end of path if not present
@@ -141,54 +137,4 @@ export const createMainWindow = async () => {
 
 export const destroyMainWindow = () => {
   mainWindow = null;
-};
-
-// we listen in the directory and all subdirectories
-// look for .slp file to be changing
-// try to extract player data
-let watcher: fs.FSWatcher;
-export const listenForReplayFile = (directory: string) => {
-  watcher?.close();
-  console.log("listenForReplayFile", directory);
-  watcher = fs.watch(directory, { recursive: true }, (event, filename) => {
-    console.log("event, filename", event, filename);
-    if (filename) {
-      try {
-        const filePath = path.join(directory, filename);
-        const game = new SlippiGame(filePath);
-
-        // const winners = game.getWinners();
-        // if (winners.length > 0) {
-        //   const path = directory + "/" + filename;
-        //   // filename can sometimes include subdirectories of directory
-        //   // but just want the actual file name
-        //   const name = filename.split("/").pop() || filename;
-        //   console.log("winners", winners);
-        //   console.log("path:", path, "name:", name);
-        //   replayLoadManager.beginLoadingReplayFile({ path, name });
-        //   return;
-        // }
-
-        const settings = game.getSettings();
-        const players = settings?.players.map((player: any) => {
-          return {
-            connectCode: player.connectCode,
-            name: player.displayName,
-            characterId: (player.characterId || 0).toString(),
-          };
-        });
-        const stageId = settings.stageId;
-        mainWindow?.webContents.send("live-replay-loaded", {
-          filename,
-          players,
-          stageId,
-        });
-      } catch (_e) {}
-    }
-  });
-};
-
-export const stopListeningForReplayFile = () => {
-  console.log("stopListeningForReplayFile");
-  watcher?.close();
 };
