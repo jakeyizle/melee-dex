@@ -1,9 +1,9 @@
 {
-  "name": "electron-vite-react",
+  "name": "SmashDex",
   "version": "2.2.0",
   "main": "dist-electron/main/index.js",
-  "description": "Electron Vite React boilerplate.",
-  "author": "草鞋没号 <308487730@qq.com>",
+  "description": "Live statistics about your Slippi opponents",
+  "author": "Jacob DeWar <whiterbread@gmail.com>",
   "license": "MIT",
   "private": true,
   "debug": {
