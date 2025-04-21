@@ -50,7 +50,7 @@ export const SettingsPage = () => {
     if (directory) {
       setDirectoryErrorText("");
       setReplayDirectory(directory);
-      upsertSettings([{ key: "replayDirectory", value: replayDirectory }]);
+      upsertSettings([{ key: "replayDirectory", value: directory }]);
     }
   };
 
@@ -108,7 +108,7 @@ export const SettingsPage = () => {
           <Card>
             <CardHeader
               title="App Settings"
-              subheader="Configure your Smash Stats Tracker"
+              subheader="Configure your SmashDex settings"
             />
             <CardContent sx={{ pt: 0 }}>
               <Box sx={{ mb: 3 }}>
@@ -162,19 +162,10 @@ export const SettingsPage = () => {
                 </FormControl>
                 <Typography variant="body2" color="text.secondary">
                   Your connect code helps identify which player is you in the
-                  stats (optional)
+                  stats (optional).
                 </Typography>
               </Box>
             </CardContent>
-            {/* <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSaveSettings}
-              >
-                Save Settings
-              </Button>
-            </CardActions> */}
 
             <Divider sx={{ mx: 2, my: 2 }} />
             <Box sx={{ p: 2 }}>

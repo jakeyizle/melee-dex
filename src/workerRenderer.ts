@@ -8,15 +8,12 @@ import {
 } from "./db/replays";
 
 ipcRenderer.on("start-load", async (event, args) => {
-  console.log("STARTING LOAD!");
   const processedBatch = [];
   let loadReplays = true;
 
   while (loadReplays) {
     const files = await ipcRenderer.invoke("request-replays-to-load");
-    console.log("requested files", files);
     if (!files || files.length === 0) {
-      console.log("no files to load");
       loadReplays = false;
     }
 

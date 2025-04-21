@@ -87,7 +87,6 @@ export const setupReplayStoreIpcListeners = () => {
   const { getState, setState } = useReplayStore;
 
   window.ipcRenderer.on("update-replay-load-progress", (_event, args) => {
-    console.log("update-replay-load-progress", args);
     setState({
       isLoadingReplays: true,
       currentReplaysLoaded: args.currentReplaysLoaded,
@@ -97,13 +96,11 @@ export const setupReplayStoreIpcListeners = () => {
   });
 
   window.ipcRenderer.on("live-replay-loaded", (_event, args) => {
-    console.log("live-replay-loaded", args);
     const { handleLiveReplay } = getState();
     handleLiveReplay(args);
   });
 
   window.ipcRenderer.on("end-loading-replays", async (_event, args) => {
-    console.log("end-loading-replays", args);
     const totalReplayCount = await selectReplayCount();
     const totalBadReplayCount = await selectBadReplayCount();
     const { currentReplayInfo } = getState();

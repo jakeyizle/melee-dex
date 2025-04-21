@@ -14,7 +14,8 @@ const { SlippiGame } = require("@slippi/slippi-js");
 
 export class ReplayLoadManager {
   private static instance: ReplayLoadManager | null = null;
-  private isLoadingReplays = false;
+  private isLoadingSingleReplay = false;
+  private isLoadingReplayDirectory = false;
   private totalReplaysToLoad = 0;
   private currentReplaysLoaded = 0;
   private replayFiles: ReplayFile[] = [];
@@ -38,8 +39,8 @@ export class ReplayLoadManager {
     existingReplayNames: string[],
   ) {
     if (!replayDirectory) return;
-    if (this.isLoadingReplays) return;
-    this.isLoadingReplays = true;
+    if (this.isLoadingReplays()) return;
+    this.isLoadingReplayDirectory = true;
     this.replayDirectory = replayDirectory;
     const replays = await getReplayFiles(replayDirectory);
 
@@ -81,15 +82,10 @@ export class ReplayLoadManager {
   }
 
   public async beginLoadingReplayFile(file: { path: string; name: string }) {
-    console.log(
-      "beginLoadingReplayFile",
-      this.isLoadingReplays,
-      this.workerWebContents.length,
-    );
-    if (this.isLoadingReplays) return;
+    if (this.isLoadingReplays()) return;
 
     this.replayFiles = [file];
-    this.isLoadingReplays = true;
+    this.isLoadingSingleReplay = true;
     this.totalReplaysToLoad = 1;
     this.currentReplaysLoaded = 0;
     this.batchSize = 1;
@@ -106,7 +102,8 @@ export class ReplayLoadManager {
   public endLoadingReplays(webContents?: WebContents) {
     // keep 1 worker in background, so we can avoid spinning new workers to load 1 file at a time
     if (this.workerWebContents.length <= 1 || !webContents) {
-      this.isLoadingReplays = false;
+      this.isLoadingReplayDirectory = false;
+      this.isLoadingSingleReplay = false;
       mainWindow?.webContents.send("end-loading-replays");
       this.listenForReplayFile(this.replayDirectory);
       return;
@@ -118,6 +115,10 @@ export class ReplayLoadManager {
   }
 
   public updateReplayLoadProgress(batch: number) {
+    // we don't update progress for single replays
+    // to avoid changing UI state
+    if (this.isLoadingSingleReplay) return;
+
     this.currentReplaysLoaded += batch;
     const timeSpentLoading = Date.now() - this.startTimestamp;
     const replaysPerSecond =
@@ -175,5 +176,9 @@ export class ReplayLoadManager {
 
   stopListeningForReplayFile = () => {
     this.watcher?.close();
+  };
+
+  isLoadingReplays = () => {
+    return this.isLoadingReplayDirectory || this.isLoadingSingleReplay;
   };
 }

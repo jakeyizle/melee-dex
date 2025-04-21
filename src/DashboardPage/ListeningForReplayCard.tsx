@@ -104,7 +104,7 @@ export const ListeningForReplayCard = () => {
 
         <Alert severity="success" sx={{ mb: 4 }}>
           <AlertTitle>Ready to track your next match</AlertTitle>
-          Start a game in Slippi, and this dashboard will automatically update
+          Start a game in Slippi, and the dashboard will automatically update
           with live match information.
         </Alert>
       </CardContent>
