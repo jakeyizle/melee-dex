@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { selectAllSettings } from "../db/settings";
+import { selectAllSettings } from "@/db/settings";
 import { LiveMatchDisplay } from "./LiveMatchDisplay";
-import { useReplayStore } from "../replayStore";
+import { useReplayStore } from "@/replayStore";
 import { NoReplayDirectoryCard } from "./NoReplayDirectoryCard";
 import { ReplayLoadInProgressCard } from "./ReplayLoadInProgressCard";
 import { ListeningForReplayCard } from "./ListeningForReplayCard";

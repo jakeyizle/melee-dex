@@ -30,7 +30,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <AppBar position="fixed">
           <Toolbar>
             <Typography variant="h6" component="h1" sx={{ fontWeight: "bold" }}>
-              SmashDex
+              MeleeDex
             </Typography>
             <Box sx={{ ml: "auto", display: "flex", gap: 3 }}>
               <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>

@@ -80,7 +80,7 @@ export const createInvisWindow = () => {
     },
   });
 
-  if (WORKER_URL) {
+  if (VITE_DEV_SERVER_URL) {
     invisWindow.loadURL(WORKER_URL);
     //react dev tools does not appreciate other windows having dev tools open
     invisWindow.webContents.openDevTools();

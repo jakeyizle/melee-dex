@@ -1,8 +1,8 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 
 import Layout from "./Layout";
-import { SettingsPage } from "./Settings";
-import { DashboardPage } from "./DashboardPage";
+import { SettingsPage } from "./components/SettingsPage";
+import { DashboardPage } from "./components/DashboardPage";
 
 export default function App() {
   return (

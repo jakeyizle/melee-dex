@@ -1,5 +1,5 @@
 {
-  "name": "SmashDex",
+  "name": "melee-dex",
   "version": "2.2.0",
   "main": "dist-electron/main/index.js",
   "description": "Live statistics about your Slippi opponents",

@@ -19,7 +19,6 @@ export const CurrentMatchCard = () => {
             </Typography>
           </Box>
         }
-        // subheader={}
       />
       {currentReplayInfo ? (
         <CurrentMatchCardContent

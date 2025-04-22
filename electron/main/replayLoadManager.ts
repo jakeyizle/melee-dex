@@ -139,20 +139,22 @@ export class ReplayLoadManager {
       directory,
       { recursive: true },
       (event, filename) => {
-        if (filename && !this.isLoadingReplays) {
+        console.log("filename -", filename);
+        console.log("isLoadingReplays -", this.isLoadingReplays());
+        if (filename && !this.isLoadingReplays()) {
           try {
             const filePath = path.join(directory, filename);
             const game = new SlippiGame(filePath);
 
-            // const winners = game.getWinners();
-            // if (winners.length > 0) {
-            //   const path = directory + "/" + filename;
-            //   // filename can sometimes include subdirectories of directory
-            //   // but just want the actual file name
-            //   const name = filename.split("/").pop() || filename;
-            //   this.beginLoadingReplayFile({ path, name });
-            //   return;
-            // }
+            const winners = game.getWinners();
+            if (winners.length > 0) {
+              const path = directory + "/" + filename;
+              // filename can sometimes include subdirectories of directory
+              // but just want the actual file name
+              const name = filename.split("/").pop() || filename;
+              this.beginLoadingReplayFile({ path, name });
+              // return;
+            }
 
             const settings = game.getSettings();
             const players = settings?.players.map((player: any) => {

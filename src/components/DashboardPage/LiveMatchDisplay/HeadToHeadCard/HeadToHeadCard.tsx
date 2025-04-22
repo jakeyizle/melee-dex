@@ -3,7 +3,6 @@ import { Typography, Box, Card, CardHeader } from "@mui/material";
 import { useReplayStore } from "@/replayStore";
 import { HeadToHeadCardContent } from "./HeadToHeadCardContent";
 import { HeadToHeadEmptyCardContent } from "./HeadToHeadEmptyCardContent";
-import { NewHeadToHeadCardContent } from "./NewHeadToHeadCardContent";
 
 export const HeadToHeadCard = () => {
   const { headToHeadStats, currentReplayInfo } = useReplayStore();
@@ -25,12 +24,8 @@ export const HeadToHeadCard = () => {
         }
         subheader={numberOfGamesText}
       />
-      {currentReplayInfo && headToHeadStats.length > 0 ? (
-        // <HeadToHeadCardContent
-        //   headToHeadStats={headToHeadStats}
-        //   stageId={currentReplayInfo.stageId}
-        // />
-        <NewHeadToHeadCardContent
+      {currentReplayInfo && numberOfGames > 0 ? (
+        <HeadToHeadCardContent
           headToHeadStats={headToHeadStats}
           stageId={currentReplayInfo.stageId}
         />

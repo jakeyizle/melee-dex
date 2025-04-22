@@ -117,7 +117,14 @@ export const CurrentMatchCardContent = ({
         </Box>
 
         {headToHeadStats.length > 0 && (
+          // subtle text
+
           <Grid container spacing={2}>
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="body2" color="text.secondary">
+                Character Usage
+              </Typography>
+            </Grid>
             {/* Player 1 Characters */}
             <Grid size={{ xs: 12, sm: 5.5 }}>
               <Stack spacing={1}>
@@ -153,8 +160,7 @@ export const CurrentMatchCardContent = ({
                         }}
                       >
                         <Typography variant="body2">
-                          {getCharacterNameFromId(char.characterId)} (
-                          {char.playCount})
+                          {getCharacterNameFromId(char.characterId)}
                         </Typography>
                         <Typography variant="body2">
                           {char.playRate}%
@@ -223,8 +229,7 @@ export const CurrentMatchCardContent = ({
                         }}
                       >
                         <Typography variant="body2">
-                          {getCharacterNameFromId(char.characterId)} (
-                          {char.playCount})
+                          {getCharacterNameFromId(char.characterId)}
                         </Typography>
                         <Typography variant="body2">
                           {char.playRate}%

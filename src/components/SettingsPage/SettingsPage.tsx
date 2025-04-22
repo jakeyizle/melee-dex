@@ -24,7 +24,7 @@ import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import DeleteIcon from "@mui/icons-material/Delete";
 import WarningIcon from "@mui/icons-material/Warning";
 import { useNavigate } from "react-router-dom";
-import { selectAllSettings, upsertSettings } from "../db/settings";
+import { selectAllSettings, upsertSettings } from "../../db/settings";
 import { dropDB } from "@/db/stores";
 
 export const SettingsPage = () => {
@@ -77,6 +77,7 @@ export const SettingsPage = () => {
   const handleConnectCodeChange = (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
+    setUsername(event.target.value);
     upsertSettings([{ key: "username", value: event.target.value }]);
   };
 
@@ -85,12 +86,6 @@ export const SettingsPage = () => {
       setDirectoryErrorText("Please select a replay directory");
       return;
     }
-    setReplayDirectory(replayDirectory);
-    setUsername(username);
-    upsertSettings([
-      { key: "replayDirectory", value: replayDirectory },
-      { key: "username", value: username },
-    ]);
     navigate("/");
   };
 
@@ -108,7 +103,7 @@ export const SettingsPage = () => {
           <Card>
             <CardHeader
               title="App Settings"
-              subheader="Configure your SmashDex settings"
+              subheader="Configure your MeleeDex settings"
             />
             <CardContent sx={{ pt: 0 }}>
               <Box sx={{ mb: 3 }}>
@@ -162,10 +157,19 @@ export const SettingsPage = () => {
                 </FormControl>
                 <Typography variant="body2" color="text.secondary">
                   Your connect code helps identify which player is you in the
-                  stats (optional).
+                  stats (optional)
                 </Typography>
               </Box>
             </CardContent>
+            <CardActions sx={{ justifyContent: "flex-end", p: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSaveSettings}
+              >
+                Save Settings
+              </Button>
+            </CardActions>
 
             <Divider sx={{ mx: 2, my: 2 }} />
             <Box sx={{ p: 2 }}>
