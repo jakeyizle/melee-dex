@@ -23,7 +23,7 @@ jobs:
         run: npm ci
 
       - name: Build and package with electron-builder
-        run: npx electron-builder --windows --x64
+        run: npm run build
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
