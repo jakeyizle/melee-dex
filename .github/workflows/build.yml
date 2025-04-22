@@ -1,31 +1,33 @@
-name: Build/release
+name: Build and Publish for Windows
 
-on: push
+on:
+  push:
+    tags:
+      - "v*" # Trigger only on version tags like v1.0.0
 
 jobs:
-  release:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+  build-windows:
+    runs-on: windows-latest
 
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install Node.js, NPM and Yarn
-        uses: actions/setup-node@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 10
+          node-version: "18"
+          cache: "npm"
 
-      - name: Build/release Electron app
-        uses: samuelmeuli/action-electron-builder@v1
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and package with electron-builder
+        run: npx electron-builder --windows --x64
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          # GitHub token, automatically provided to the action
-          # (No need to define this secret in the repo settings)
-          github_token: ${{ secrets.github_token }}
-
-          # If the commit is tagged with a version (e.g. "v1.0.0"),
-          # release the app after building
-          release: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          files: dist/*.exe # Adjust based on your output file
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
