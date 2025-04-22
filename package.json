@@ -1,6 +1,6 @@
 {
   "name": "melee-dex",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "main": "dist-electron/main/index.js",
   "description": "Live statistics about your Slippi opponents",
   "author": "Jacob DeWar <whiterbread@gmail.com>",
