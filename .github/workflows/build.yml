@@ -25,11 +25,13 @@ jobs:
       - name: Build and package with electron-builder
         run: npm run build
 
+      - name: Set version variable
+        id: vars
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release/**/*.exe
-            !**/win-unpacked/*.exe
+          files: release/${{ steps.vars.outputs.version }}/melee-dex_${{ steps.vars.outputs.version }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
