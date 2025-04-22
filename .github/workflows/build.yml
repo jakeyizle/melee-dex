@@ -30,6 +30,6 @@ jobs:
         with:
           files: |
             release/**/*.exe
-            !**/win-unpacked/*
+            !**/win-unpacked/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
