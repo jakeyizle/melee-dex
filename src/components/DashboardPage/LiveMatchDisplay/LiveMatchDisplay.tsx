@@ -12,9 +12,7 @@ export const LiveMatchDisplay = () => {
           <CurrentMatchCard />
         </Grid>
         <Grid size={{ sm: 12, lg: 8 }}>
-          <Stack spacing={2}>
-            <UserStatsCard />
-          </Stack>
+          <UserStatsCard />
         </Grid>
         <Grid size={{ sm: 12, lg: 4 }}>
           <RecentMatchesCard />

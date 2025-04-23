@@ -4,10 +4,10 @@ import { RecentMatchesCardEmptyContent } from "./RecentMatchesCardEmptyCardConte
 import { RecentMatchesCardContent } from "./RecentMatchesCardContent";
 
 export const RecentMatchesCard = () => {
-  const { headToHeadReplays, userStat, currentReplayInfo } = useReplayStore();
+  const { headToHeadReplays, statInfo, currentReplayInfo } = useReplayStore();
 
   const otherPlayerCode = currentReplayInfo?.players.find(
-    (player) => player.connectCode !== userStat?.userConnectCode,
+    (player) => player.connectCode !== statInfo?.userInfo.connectCode,
   )?.connectCode;
 
   const subheader = otherPlayerCode ? `Against ${otherPlayerCode}` : "";
@@ -16,15 +16,15 @@ export const RecentMatchesCard = () => {
       <CardHeader
         title={
           <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-            Last 3 Matches
+            Last 5 Matches
           </Typography>
         }
         subheader={subheader}
       />
-      {headToHeadReplays.length > 0 && userStat && otherPlayerCode ? (
+      {headToHeadReplays.length > 0 && statInfo && otherPlayerCode ? (
         <RecentMatchesCardContent
           headToHeadReplays={headToHeadReplays}
-          userStat={userStat}
+          userConnectCode={statInfo.userInfo.connectCode}
         />
       ) : (
         <RecentMatchesCardEmptyContent />

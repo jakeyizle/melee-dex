@@ -29,10 +29,8 @@ export const getCharacterNameFromId = (id: string) => {
     "Ganondorf",
   ];
 
-  if (id_number < 0 || id_number >= characterNames.length) {
-    return "Unknown";
-  }
-  return characterNames[id_number];
+  const name = characterNames?.[id_number];
+  return name || "Unknown";
 };
 
 export const getStageNameFromId = (id: string) => {

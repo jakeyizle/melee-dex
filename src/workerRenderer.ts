@@ -31,12 +31,17 @@ ipcRenderer.on("start-load", async (event, args) => {
             await postBadReplay({ name: file.name, path: file.path });
             continue;
           }
+          if (metadata.lastFrame && metadata.lastFrame <= 30 * 60) {
+            await postBadReplay({ name: file.name, path: file.path });
+            continue;
+          }
           // we do this as late as possible because it's slow
           const winners = tryGetWinner(game);
           if (winners.length === 0) {
             await postBadReplay({ name: file.name, path: file.path });
             continue;
           }
+
           const playerOne: ReplayPlayer = {
             connectCode:
               settings.players[0].connectCode ||
@@ -46,9 +51,10 @@ ipcRenderer.on("start-load", async (event, args) => {
               settings.players[0].displayName ||
               metadata?.players?.[0]?.names?.netplay ||
               "",
-            characterId:
-              (settings.players[0].characterId || "").toString() ||
-              Object.values(metadata.players![0].characters)[0].toString(),
+            characterId: (
+              settings.players[0].characterId ??
+              Object.values(metadata.players![0].characters)[0]
+            ).toString(),
           };
 
           const playerTwo: ReplayPlayer = {
@@ -60,11 +66,11 @@ ipcRenderer.on("start-load", async (event, args) => {
               settings.players[1].displayName ||
               metadata?.players?.[1]?.names?.netplay ||
               "",
-            characterId:
-              (settings.players[1].characterId || "").toString() ||
-              Object.values(metadata.players![1].characters)[0].toString(),
+            characterId: (
+              settings.players[1].characterId ??
+              Object.values(metadata.players![1].characters)[0]
+            ).toString(),
           };
-
           const stageId = settings.stageId;
 
           const winnerIndex = winners[0].playerIndex;

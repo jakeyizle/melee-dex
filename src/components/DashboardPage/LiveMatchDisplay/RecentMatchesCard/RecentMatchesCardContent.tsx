@@ -2,16 +2,15 @@ import { getMostRecentMatches } from "@/utils/statUtils";
 import { CardContent, Stack } from "@mui/material";
 import { RecentMatchRow } from "./RecentMatchRow";
 import { Replay } from "@/db/replays";
-import { UserStat } from "@/types";
 
 interface RecentMatchesCardContentProps {
   headToHeadReplays: Replay[];
-  userStat: UserStat;
+  userConnectCode: string;
 }
 
 export const RecentMatchesCardContent = ({
   headToHeadReplays,
-  userStat,
+  userConnectCode,
 }: RecentMatchesCardContentProps) => {
   const recentReplays = getMostRecentMatches(headToHeadReplays, 5);
 
@@ -21,7 +20,7 @@ export const RecentMatchesCardContent = ({
         {recentReplays.map((replay) => (
           <RecentMatchRow
             replay={replay}
-            userConnectCode={userStat.userConnectCode}
+            userConnectCode={userConnectCode}
             key={replay.name}
           />
         ))}

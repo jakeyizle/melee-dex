@@ -144,3 +144,9 @@ export const determineUserBasedOnLiveGame = async (
   const mostCommonUser = await getMostCommonUser(liveGameConnectCodes);
   return mostCommonUser;
 };
+
+export const executeCallbackOnEachReplay = async (
+  callback: (replay: Replay) => void,
+) => {
+  await replaysStore.iterate((replay: Replay, key) => callback(replay));
+};

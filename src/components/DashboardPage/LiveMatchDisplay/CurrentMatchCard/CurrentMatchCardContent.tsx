@@ -1,4 +1,4 @@
-import { CurrentReplayInfo, HeadToHeadStat } from "@/types";
+import { CurrentReplayInfo, StatInfo } from "@/types";
 import {
   Typography,
   Box,
@@ -15,20 +15,29 @@ import {
 
 interface CurrentMatchCardContentProps {
   currentReplayInfo: CurrentReplayInfo;
-  headToHeadStats: HeadToHeadStat[];
+  statInfo: StatInfo | null;
 }
 
 export const CurrentMatchCardContent = ({
   currentReplayInfo,
-  headToHeadStats,
+  statInfo,
 }: CurrentMatchCardContentProps) => {
   const playerOne = currentReplayInfo.players[0];
   const playerTwo = currentReplayInfo.players[1];
   const stageId = currentReplayInfo.stageId;
 
+  const playerOneInfo =
+    statInfo?.userInfo.connectCode === playerOne.connectCode
+      ? statInfo.userInfo
+      : statInfo?.opponentInfo;
+  const playerTwoInfo =
+    statInfo?.userInfo.connectCode === playerTwo.connectCode
+      ? statInfo.userInfo
+      : statInfo?.opponentInfo;
+
   return (
     <CardContent>
-      <Stack spacing={4}>
+      <Stack spacing={3}>
         <Box
           sx={{
             display: "flex",
@@ -116,9 +125,7 @@ export const CurrentMatchCardContent = ({
           </Box>
         </Box>
 
-        {headToHeadStats.length > 0 && (
-          // subtle text
-
+        {playerOneInfo && playerOneInfo.characterUsage.length > 0 && (
           <Grid container spacing={2}>
             <Grid size={{ xs: 12 }}>
               <Typography variant="body2" color="text.secondary">
@@ -128,7 +135,7 @@ export const CurrentMatchCardContent = ({
             {/* Player 1 Characters */}
             <Grid size={{ xs: 12, sm: 5.5 }}>
               <Stack spacing={1}>
-                {headToHeadStats[0].characterUsage.map((char) => (
+                {playerOneInfo.characterUsage.map((char) => (
                   <Box
                     key={char.characterId}
                     sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
@@ -197,65 +204,67 @@ export const CurrentMatchCardContent = ({
             {/* Player 2 Characters */}
             <Grid size={{ xs: 12, sm: 5.5 }}>
               <Stack spacing={1}>
-                {headToHeadStats[1].characterUsage.map((char) => (
-                  <Box
-                    key={char.characterId}
-                    sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
-                  >
+                {playerTwoInfo &&
+                  playerTwoInfo.characterUsage.length > 0 &&
+                  playerTwoInfo.characterUsage.map((char) => (
                     <Box
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "50%",
-                        bgcolor: "rgba(255, 255, 255, 0.05)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        border: "1px solid rgba(245, 158, 11, 0.3)",
-                      }}
+                      key={char.characterId}
+                      sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
                     >
-                      <img
-                        width={24}
-                        height={24}
-                        src={getCharacterIcon(char.characterId)}
-                        alt=""
-                      />
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
                       <Box
                         sx={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: "50%",
+                          bgcolor: "rgba(255, 255, 255, 0.05)",
                           display: "flex",
-                          justifyContent: "space-between",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          border: "1px solid rgba(245, 158, 11, 0.3)",
                         }}
                       >
-                        <Typography variant="body2">
-                          {getCharacterNameFromId(char.characterId)}
-                        </Typography>
-                        <Typography variant="body2">
-                          {char.playRate}%
-                        </Typography>
-                      </Box>
-                      <Box
-                        sx={{
-                          mt: 0.5,
-                          height: 6,
-                          bgcolor: "rgba(255, 255, 255, 0.1)",
-                          borderRadius: 3,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            height: "100%",
-                            width: `${char.playRate}%`,
-                            bgcolor: "secondary.main",
-                            opacity: 0.8,
-                          }}
+                        <img
+                          width={24}
+                          height={24}
+                          src={getCharacterIcon(char.characterId)}
+                          alt=""
                         />
                       </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <Typography variant="body2">
+                            {getCharacterNameFromId(char.characterId)}
+                          </Typography>
+                          <Typography variant="body2">
+                            {char.playRate}%
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            mt: 0.5,
+                            height: 6,
+                            bgcolor: "rgba(255, 255, 255, 0.1)",
+                            borderRadius: 3,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              height: "100%",
+                              width: `${char.playRate}%`,
+                              bgcolor: "secondary.main",
+                              opacity: 0.8,
+                            }}
+                          />
+                        </Box>
+                      </Box>
                     </Box>
-                  </Box>
-                ))}
+                  ))}
               </Stack>
             </Grid>
           </Grid>

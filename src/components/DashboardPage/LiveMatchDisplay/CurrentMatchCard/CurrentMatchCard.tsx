@@ -4,7 +4,7 @@ import { CurrentMatchCardContent } from "./CurrentMatchCardContent";
 import { CurrentMatchEmptyCardContent } from "./CurrentMatchEmptyCardContent";
 
 export const CurrentMatchCard = () => {
-  const { currentReplayInfo, headToHeadStats } = useReplayStore();
+  const { currentReplayInfo, statInfo } = useReplayStore();
   return (
     <Card
       sx={{
@@ -23,7 +23,7 @@ export const CurrentMatchCard = () => {
       {currentReplayInfo ? (
         <CurrentMatchCardContent
           currentReplayInfo={currentReplayInfo}
-          headToHeadStats={headToHeadStats}
+          statInfo={statInfo}
         />
       ) : (
         <CurrentMatchEmptyCardContent />

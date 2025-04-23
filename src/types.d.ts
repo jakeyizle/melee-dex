@@ -17,51 +17,32 @@ export type PlayerCharacter = {
 export type CharacterUsageStat = {
   characterId: string;
   playCount: number;
-  winCount: number;
-  lossCount: number;
   playRate: number;
 };
 
-export type HeadToHeadStat = {
+export type PlayerInfo = {
   connectCode: string;
-  overallWinCount: number;
-  overallLossCount: number;
-  overallWinRate: number;
-  currentMatchUpGameCount: number;
-  currentMatchUpWinCount: number;
-  currentMatchUpLossCount: number;
-  currentMatchUpWinRate: number;
-  stageGameCount: number;
-  stageWinCount: number;
-  stageLossCount: number;
-  stageWinRate: number;
-  currentMatchUpAndStageGameCount: number;
-  currentMatchUpAndStageWinCount: number;
-  currentMatchUpAndStageLossCount: number;
-  currentMatchUpAndStageWinRate: number;
-  characterUsage: CharacterUsageStat[];
   currentCharacterId: string;
+  characterUsage: CharacterUsageStat[];
 };
 
-export type UserStat = {
-  userConnectCode: string;
+export type StatType =
+  | "overall"
+  | "stage"
+  | "currentMatchUp"
+  | "currentMatchUpAndStage";
 
-  overallWinCount: number;
-  overallLossCount: number;
-  overallWinRate: number;
+export type BaseStat = {
+  type: StatType;
+  totalCount: number;
+  winCount: number;
+  lossCount: number;
+  winRate: number;
+};
 
-  stageWinCount: number;
-  stageLossCount: number;
-  stageWinRate: number;
-  stageGameCount: number;
-
-  currentMatchUpGameCount: number;
-  currentMatchUpWinCount: number;
-  currentMatchUpLossCount: number;
-  currentMatchUpWinRate: number;
-
-  currentMatchUpAndStageGameCount: number;
-  currentMatchUpAndStageWinCount: number;
-  currentMatchUpAndStageLossCount: number;
-  currentMatchUpAndStageWinRate: number;
+export type StatInfo = {
+  userInfo: PlayerInfo;
+  opponentInfo: PlayerInfo;
+  userStat: BaseStat[];
+  headToHeadStat: BaseStat[];
 };

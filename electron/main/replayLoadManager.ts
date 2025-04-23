@@ -139,8 +139,6 @@ export class ReplayLoadManager {
       directory,
       { recursive: true },
       (event, filename) => {
-        console.log("filename -", filename);
-        console.log("isLoadingReplays -", this.isLoadingReplays());
         if (filename && !this.isLoadingReplays()) {
           try {
             const filePath = path.join(directory, filename);
@@ -148,12 +146,14 @@ export class ReplayLoadManager {
 
             const winners = game.getWinners();
             if (winners.length > 0) {
+              const metadata = game.getMetadata();
+              const lastFrame = metadata.lastFrame;
+              if (lastFrame <= 30 * 60) return;
               const path = directory + "/" + filename;
               // filename can sometimes include subdirectories of directory
               // but just want the actual file name
               const name = filename.split("/").pop() || filename;
               this.beginLoadingReplayFile({ path, name });
-              // return;
             }
 
             const settings = game.getSettings();

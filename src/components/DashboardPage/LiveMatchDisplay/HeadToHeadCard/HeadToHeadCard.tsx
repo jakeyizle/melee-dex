@@ -3,15 +3,18 @@ import { Typography, Box, Card, CardHeader } from "@mui/material";
 import { useReplayStore } from "@/replayStore";
 import { HeadToHeadCardContent } from "./HeadToHeadCardContent";
 import { HeadToHeadEmptyCardContent } from "./HeadToHeadEmptyCardContent";
+import { getCharacterNameFromId } from "@/utils/meleeIdUtils";
 
 export const HeadToHeadCard = () => {
-  const { headToHeadStats, currentReplayInfo } = useReplayStore();
+  const { statInfo, currentReplayInfo } = useReplayStore();
   const numberOfGames =
-    headToHeadStats[0].overallWinCount + headToHeadStats[0].overallLossCount;
+    statInfo?.headToHeadStat.find((stat) => stat.type === "overall")
+      ?.totalCount || 0;
+
   const numberOfGamesText =
-    numberOfGames === 0
-      ? ""
-      : `${numberOfGames} ${numberOfGames === 1 ? "game" : "games"} played`;
+    numberOfGames > 0 && statInfo
+      ? `${numberOfGames} ${numberOfGames === 1 ? "game" : "games"} played as ${getCharacterNameFromId(statInfo.userInfo.currentCharacterId)}`
+      : "";
   return (
     <Card sx={{ height: "100%" }}>
       <CardHeader
@@ -24,9 +27,9 @@ export const HeadToHeadCard = () => {
         }
         subheader={numberOfGamesText}
       />
-      {currentReplayInfo && numberOfGames > 0 ? (
+      {currentReplayInfo && statInfo && numberOfGames > 0 ? (
         <HeadToHeadCardContent
-          headToHeadStats={headToHeadStats}
+          statInfo={statInfo}
           stageId={currentReplayInfo.stageId}
         />
       ) : (

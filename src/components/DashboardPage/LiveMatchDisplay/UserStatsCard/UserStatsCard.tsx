@@ -5,42 +5,41 @@ import { UserStatsCardContent } from "./UserStatsCardContent";
 import { UserStatsCardEmptyContent } from "./UserStatsCardEmptyContent";
 
 export const UserStatsCard = () => {
-  const { userStat, currentReplayInfo } = useReplayStore();
-  const player = currentReplayInfo?.players.find(
-    (player) => player.connectCode === userStat?.userConnectCode,
+  const { statInfo, currentReplayInfo } = useReplayStore();
+  const user = currentReplayInfo?.players.find(
+    (player) => player.connectCode === statInfo?.userInfo.connectCode,
   );
   const otherPlayer = currentReplayInfo?.players.find(
-    (player) => player.connectCode !== userStat?.userConnectCode,
+    (player) => player.connectCode !== statInfo?.userInfo.connectCode,
   );
 
-  const characterName = getCharacterNameFromId(player?.characterId || "");
+  const characterName = getCharacterNameFromId(user?.characterId || "");
   const otherCharacterName = getCharacterNameFromId(
     otherPlayer?.characterId || "",
   );
   const stageId = currentReplayInfo?.stageId;
 
-  const title = characterName
-    ? `Your Stats Playing ${characterName}`
-    : "Your Stats";
-
-  const subheader = userStat
-    ? `${userStat.overallWinCount + userStat.overallLossCount} games played`
-    : "";
+  const numberOfGames =
+    statInfo?.userStat.find((stat) => stat.type === "overall")?.totalCount || 0;
+  const numberOfGamesText =
+    numberOfGames > 0 && statInfo
+      ? `${numberOfGames} ${numberOfGames === 1 ? "game" : "games"} played as ${characterName}`
+      : "";
   return (
-    <Card>
+    <Card sx={{ height: "100%" }}>
       <CardHeader
         title={
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-              {title}
+              Your Stats
             </Typography>
           </Box>
         }
-        subheader={subheader}
+        subheader={numberOfGamesText}
       />
-      {userStat && otherCharacterName && stageId ? (
+      {statInfo && otherCharacterName && stageId ? (
         <UserStatsCardContent
-          userStat={userStat}
+          statInfo={statInfo}
           otherCharacterName={otherCharacterName}
           stageId={stageId}
         />

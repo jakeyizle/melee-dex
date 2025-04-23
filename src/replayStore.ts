@@ -1,27 +1,15 @@
 import { create } from "zustand";
-import {
-  Replay,
-  selectBadReplayCount,
-  selectReplayCount,
-  selectReplaysWithBothPlayers,
-  selectReplaysWithUser,
-} from "@/db/replays";
-import {
-  CurrentReplayInfo,
-  HeadToHeadStat,
-  LiveReplayPlayers,
-  UserStat,
-} from "@/types";
+import { Replay, selectBadReplayCount, selectReplayCount } from "@/db/replays";
+import { CurrentReplayInfo, LiveReplayPlayers, StatInfo } from "@/types";
 import { selectAllReplayNames } from "@/db/replays";
-import { getStats } from "./utils/statUtils";
+import { getStatInfo } from "./utils/statUtils";
 
 type ReplayStore = {
   // Shared state
   currentReplayInfo: CurrentReplayInfo | null;
   currentLiveFileName: string;
-  userStat: UserStat | null;
-  headToHeadStats: HeadToHeadStat[];
   headToHeadReplays: Replay[];
+  statInfo: StatInfo | null;
 
   // Load progress
   isLoadingReplays: boolean;
@@ -43,9 +31,8 @@ type ReplayStore = {
 export const useReplayStore = create<ReplayStore>((set, get) => ({
   currentReplayInfo: null,
   currentLiveFileName: "",
-  userStat: null,
-  headToHeadStats: [],
   headToHeadReplays: [],
+  statInfo: null,
 
   isLoadingReplays: false,
   currentReplaysLoaded: 0,
@@ -68,16 +55,15 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
     const currentLiveFileName = get().currentLiveFileName;
 
     if (filename === currentLiveFileName) return;
-    const { userStat, headToHeadStats, headToHeadReplays } = await getStats({
-      players,
-      stageId,
+    const { statInfo, headToHeadReplays } = await getStatInfo({
+      currentReplayInfo: { players, stageId },
     });
+
     set({
-      userStat,
-      headToHeadStats,
-      headToHeadReplays,
       currentReplayInfo: { players, stageId },
       currentLiveFileName: filename,
+      statInfo,
+      headToHeadReplays,
     });
   },
 }));
@@ -104,13 +90,10 @@ export const setupReplayStoreIpcListeners = () => {
     const totalReplayCount = await selectReplayCount();
     const totalBadReplayCount = await selectBadReplayCount();
     const { currentReplayInfo } = getState();
-    let { userStat, headToHeadStats, headToHeadReplays } = !!currentReplayInfo
-      ? await getStats(currentReplayInfo)
-      : {
-          userStat: null,
-          headToHeadStats: [],
-          headToHeadReplays: [],
-        };
+    const { statInfo, headToHeadReplays } = currentReplayInfo
+      ? await getStatInfo({ currentReplayInfo })
+      : { statInfo: null, headToHeadReplays: [] };
+
     setState({
       isLoadingReplays: false,
       currentReplaysLoaded: 0,
@@ -118,8 +101,7 @@ export const setupReplayStoreIpcListeners = () => {
       replaysPerSecond: 0,
       totalReplayCount,
       totalBadReplayCount,
-      userStat,
-      headToHeadStats,
+      statInfo,
       headToHeadReplays,
     });
   });

@@ -1,262 +1,15 @@
 import {
   determineUserBasedOnLiveGame,
+  executeCallbackOnEachReplay,
   Replay,
-  selectUserAndHeadToHeadReplays,
 } from "@/db/replays";
 import {
+  BaseStat,
   CurrentReplayInfo,
-  HeadToHeadStat,
-  PlayerCharacter,
-  UserStat,
+  StatInfo,
+  StatType,
+  CharacterUsageStat,
 } from "@/types";
-
-export const getHeadToHeadStats = (
-  replays: Replay[],
-  playerCharacters: PlayerCharacter[],
-  stageId: string,
-): HeadToHeadStat[] => {
-  const playerStats: HeadToHeadStat[] = playerCharacters.map(
-    (playerCharacter) => {
-      return {
-        connectCode: playerCharacter.connectCode,
-        overallWinCount: 0,
-        overallLossCount: 0,
-        overallWinRate: 0,
-        currentMatchUpGameCount: 0,
-        currentMatchUpWinCount: 0,
-        currentMatchUpLossCount: 0,
-        currentMatchUpWinRate: 0,
-        stageGameCount: 0,
-        stageWinCount: 0,
-        stageLossCount: 0,
-        stageWinRate: 0,
-        currentMatchUpAndStageGameCount: 0,
-        currentMatchUpAndStageWinCount: 0,
-        currentMatchUpAndStageLossCount: 0,
-        currentMatchUpAndStageWinRate: 0,
-        characterUsage: [],
-        currentCharacterId: playerCharacter.characterId,
-      };
-    },
-  );
-  replays.forEach((replay) => {
-    const isCurrentMatchUp = playerCharacters.every((playerCharacter) => {
-      return replay.players.some(
-        (player) =>
-          player.connectCode === playerCharacter.connectCode &&
-          player.characterId === playerCharacter.characterId,
-      );
-    });
-    const isStage = replay.stageId == stageId;
-
-    playerStats.forEach((playerStat) => {
-      const player = replay.players.find(
-        (player) => player.connectCode === playerStat.connectCode,
-      );
-      if (!player) return;
-
-      const isWin = player.connectCode === replay.winnerConnectCode;
-      playerStat.overallWinCount += isWin ? 1 : 0;
-      playerStat.overallLossCount += !isWin ? 1 : 0;
-      playerStat.currentMatchUpGameCount += isCurrentMatchUp ? 1 : 0;
-      playerStat.currentMatchUpWinCount += isWin && isCurrentMatchUp ? 1 : 0;
-      playerStat.currentMatchUpLossCount += !isWin && isCurrentMatchUp ? 1 : 0;
-      playerStat.stageGameCount += isStage ? 1 : 0;
-      playerStat.stageWinCount += isWin && isStage ? 1 : 0;
-      playerStat.stageLossCount += !isWin && isStage ? 1 : 0;
-      playerStat.currentMatchUpAndStageGameCount +=
-        isCurrentMatchUp && isStage ? 1 : 0;
-      playerStat.currentMatchUpAndStageWinCount +=
-        isWin && isCurrentMatchUp && isStage ? 1 : 0;
-      playerStat.currentMatchUpAndStageLossCount +=
-        !isWin && isCurrentMatchUp && isStage ? 1 : 0;
-      const characterUsage = playerStat.characterUsage.find(
-        (characterUsage) => characterUsage.characterId === player.characterId,
-      );
-      if (!characterUsage) {
-        playerStat.characterUsage.push({
-          characterId: player.characterId,
-          playCount: 1,
-          winCount: isWin ? 1 : 0,
-          lossCount: !isWin ? 1 : 0,
-          playRate: 0,
-        });
-      } else {
-        characterUsage.playCount += 1;
-        characterUsage.winCount += isWin ? 1 : 0;
-        characterUsage.lossCount += !isWin ? 1 : 0;
-      }
-    });
-  });
-
-  playerStats.forEach((playerStat) => {
-    playerStat.overallWinRate =
-      Math.round((playerStat.overallWinCount / replays.length) * 100 * 10) / 10;
-
-    playerStat.currentMatchUpWinRate =
-      Math.round(
-        (playerStat.currentMatchUpWinCount /
-          playerStat.currentMatchUpGameCount) *
-          100 *
-          10,
-      ) / 10;
-
-    playerStat.stageWinRate =
-      Math.round(
-        (playerStat.stageWinCount / playerStat.stageGameCount) * 100 * 10,
-      ) / 10;
-
-    playerStat.currentMatchUpAndStageWinRate =
-      Math.round(
-        (playerStat.currentMatchUpAndStageWinCount /
-          playerStat.currentMatchUpAndStageGameCount) *
-          100 *
-          10,
-      ) / 10;
-
-    // sort character usage by play count and keep only top 3
-    playerStat.characterUsage.sort((a, b) => b.playCount - a.playCount);
-    playerStat.characterUsage = playerStat.characterUsage.slice(0, 3);
-    // for testing - repeat character usage for testing
-    // for (let i = 0; i < 3; i++) {
-    //   playerStat.characterUsage[i] = playerStat.characterUsage[0];
-    // }
-
-    playerStat.characterUsage.forEach((characterUsage) => {
-      characterUsage.playRate =
-        Math.round((characterUsage.playCount / replays.length) * 100 * 10) / 10;
-    });
-  });
-
-  return playerStats;
-};
-
-export const getUserStat = (
-  replays: Replay[],
-  playerCharacters: PlayerCharacter[] | undefined,
-  stageId: string,
-  userConnectCode: string,
-) => {
-  const userStat: UserStat = {
-    userConnectCode,
-    overallWinCount: 0,
-    overallLossCount: 0,
-    overallWinRate: 0,
-    stageWinCount: 0,
-    stageLossCount: 0,
-    stageWinRate: 0,
-    stageGameCount: 0,
-    currentMatchUpGameCount: 0,
-    currentMatchUpWinCount: 0,
-    currentMatchUpLossCount: 0,
-    currentMatchUpWinRate: 0,
-    currentMatchUpAndStageGameCount: 0,
-    currentMatchUpAndStageWinCount: 0,
-    currentMatchUpAndStageLossCount: 0,
-    currentMatchUpAndStageWinRate: 0,
-  };
-  if (!playerCharacters || !stageId || !userConnectCode || replays.length === 0)
-    return userStat;
-
-  replays.forEach((replay) => {
-    if (
-      !replay.players.some((player) => player.connectCode === userConnectCode)
-    )
-      return;
-
-    const isPlayerPlayingCharacter = replay.players.some((player) => {
-      return (
-        player.connectCode === userConnectCode &&
-        player.characterId ===
-          playerCharacters.find(
-            (playerCharacter) =>
-              playerCharacter.connectCode === userConnectCode,
-          )?.characterId
-      );
-    });
-    if (!isPlayerPlayingCharacter) return;
-    const isOpponentOtherCharacter = replay.players.some((player) => {
-      return (
-        player.connectCode !== userConnectCode &&
-        player.characterId !==
-          playerCharacters.find(
-            (playerCharacter) =>
-              playerCharacter.connectCode !== userConnectCode,
-          )?.characterId
-      );
-    });
-    const isCurrentMatchUp =
-      isPlayerPlayingCharacter && isOpponentOtherCharacter;
-    const isStage = replay.stageId == stageId;
-    const isWin = replay.winnerConnectCode === userConnectCode;
-
-    userStat.overallWinCount += isWin ? 1 : 0;
-    userStat.overallLossCount += !isWin ? 1 : 0;
-
-    userStat.currentMatchUpGameCount += isCurrentMatchUp ? 1 : 0;
-    userStat.currentMatchUpWinCount += isWin && isCurrentMatchUp ? 1 : 0;
-    userStat.currentMatchUpLossCount += !isWin && isCurrentMatchUp ? 1 : 0;
-
-    userStat.stageGameCount += isStage ? 1 : 0;
-    userStat.stageWinCount += isWin && isStage ? 1 : 0;
-    userStat.stageLossCount += !isWin && isStage ? 1 : 0;
-
-    userStat.currentMatchUpAndStageGameCount +=
-      isCurrentMatchUp && isStage ? 1 : 0;
-    userStat.currentMatchUpAndStageWinCount +=
-      isWin && isCurrentMatchUp && isStage ? 1 : 0;
-    userStat.currentMatchUpAndStageLossCount +=
-      !isWin && isCurrentMatchUp && isStage ? 1 : 0;
-  });
-
-  userStat.overallWinRate =
-    Math.round((userStat.overallWinCount / replays.length) * 100 * 10) / 10;
-  userStat.stageWinRate =
-    Math.round((userStat.stageWinCount / userStat.stageGameCount) * 100 * 10) /
-    10;
-  userStat.currentMatchUpWinRate =
-    Math.round(
-      (userStat.currentMatchUpWinCount / userStat.currentMatchUpGameCount) *
-        100 *
-        10,
-    ) / 10;
-
-  userStat.currentMatchUpAndStageWinRate =
-    Math.round(
-      (userStat.currentMatchUpAndStageWinCount /
-        userStat.currentMatchUpAndStageGameCount) *
-        100 *
-        10,
-    ) / 10;
-
-  return userStat;
-};
-
-export const getStats = async (currentReplay: CurrentReplayInfo) => {
-  const replayPlayers = currentReplay.players;
-  const user = await determineUserBasedOnLiveGame(
-    replayPlayers.map((player) => player.connectCode),
-  );
-  const { userReplays, headToHeadReplays } =
-    await selectUserAndHeadToHeadReplays(
-      user,
-      replayPlayers.map((p) => p.connectCode),
-    );
-
-  const userStat = getUserStat(
-    userReplays,
-    replayPlayers,
-    currentReplay.stageId,
-    user,
-  );
-  const headToHeadStats = getHeadToHeadStats(
-    headToHeadReplays,
-    replayPlayers,
-    currentReplay.stageId,
-  );
-
-  return { userStat, headToHeadStats, headToHeadReplays };
-};
 
 export const getMostRecentMatches = (
   replays: Replay[],
@@ -266,4 +19,197 @@ export const getMostRecentMatches = (
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
   return sortedReplays.slice(0, numberOfReplays);
+};
+
+export const getStatInfo = async ({
+  currentReplayInfo,
+}: {
+  currentReplayInfo: CurrentReplayInfo;
+}) => {
+  const userConnectCode = await determineUserBasedOnLiveGame(
+    currentReplayInfo.players.map((player) => player.connectCode),
+  );
+  const userCharacterId = currentReplayInfo.players.find(
+    (player) => player.connectCode === userConnectCode,
+  )?.characterId;
+
+  const opponentConnectCode = currentReplayInfo.players.find(
+    (player) => player.connectCode !== userConnectCode,
+  )?.connectCode;
+  const opponentCharacterId = currentReplayInfo.players.find(
+    (player) => player.connectCode !== userConnectCode,
+  )?.characterId;
+
+  const stageId = currentReplayInfo.stageId;
+
+  if (!userCharacterId || !opponentConnectCode || !opponentCharacterId) {
+    return { statInfo: null, headToHeadReplays: [] };
+  }
+
+  const statInfo: StatInfo = {
+    userInfo: {
+      connectCode: userConnectCode,
+      currentCharacterId: userCharacterId,
+      characterUsage: [],
+    },
+    opponentInfo: {
+      connectCode: opponentConnectCode,
+      currentCharacterId: opponentCharacterId,
+      characterUsage: [],
+    },
+    userStat: initalizeStats(),
+    headToHeadStat: initalizeStats(),
+  };
+  const headToHeadReplays: Replay[] = [];
+
+  const getStatsFromReplay = (replay: Replay) => {
+    // only include stats if user is in the replay
+    const replayUser = replay.players.find((player) => {
+      return player.connectCode === userConnectCode;
+    });
+    if (!replayUser) return undefined;
+
+    const replayOpponent = replay.players.find((player) => {
+      return player.connectCode === opponentConnectCode;
+    });
+    if (replayOpponent) {
+      updateCharacterInfo({
+        characterUsage: statInfo.userInfo.characterUsage,
+        replayCharacterId: replayUser.characterId,
+      });
+
+      updateCharacterInfo({
+        characterUsage: statInfo.opponentInfo.characterUsage,
+        replayCharacterId: replayOpponent.characterId,
+      });
+
+      headToHeadReplays.push(replay);
+    }
+
+    if (replayUser.characterId !== userCharacterId) return undefined;
+
+    const isWin = replay.winnerConnectCode === userConnectCode;
+    const isStage = replay.stageId == stageId;
+    // any opponent is playing the current opponent character
+    const isCurrentMatchUp = replay.players.some((player) => {
+      return (
+        player.connectCode !== userConnectCode &&
+        player.characterId == opponentCharacterId
+      );
+    });
+    statInfo.userStat.forEach((stat) =>
+      updateStat({ stat, isWin, isStage, isCurrentMatchUp }),
+    );
+
+    if (replayOpponent)
+      statInfo.headToHeadStat.forEach((stat) =>
+        updateStat({ stat, isWin, isStage, isCurrentMatchUp }),
+      );
+  };
+  await executeCallbackOnEachReplay((replay) => getStatsFromReplay(replay));
+
+  // statInfo.userInfo.characterUsage.forEach((characterUsageStat) => {
+  //   const totalCount =
+  //     statInfo.userStat.find((stat) => stat.type === "overall")?.totalCount ||
+  //     0;
+  //   characterUsageStat.playRate = totalCount
+  //     ? Math.round((characterUsageStat.playCount / totalCount) * 100 * 10) / 10
+  //     : 0;
+  // });
+
+  finalizeCharacterInfo(statInfo.userInfo.characterUsage);
+  finalizeCharacterInfo(statInfo.opponentInfo.characterUsage);
+  // statInfo.opponentInfo.characterUsage.forEach((characterUsageStat) => {
+  //   const totalCount =
+  //     statInfo.headToHeadStat.find((stat) => stat.type === "overall")
+  //       ?.totalCount || 0;
+  //   if (totalCount) {
+  //     characterUsageStat.playRate =
+  //       Math.round((characterUsageStat.playCount / totalCount) * 100 * 10) / 10;
+  //   }
+  // });
+
+  return { statInfo, headToHeadReplays };
+};
+
+const initalizeStat = (type: StatType): BaseStat => {
+  return {
+    type,
+    totalCount: 0,
+    winCount: 0,
+    lossCount: 0,
+    winRate: 0,
+  };
+};
+
+const initalizeStats = (): BaseStat[] => {
+  return [
+    initalizeStat("overall"),
+    initalizeStat("stage"),
+    initalizeStat("currentMatchUp"),
+    initalizeStat("currentMatchUpAndStage"),
+  ];
+};
+
+const updateStat = ({
+  stat,
+  isWin,
+  isStage,
+  isCurrentMatchUp,
+}: {
+  stat: BaseStat;
+  isWin: boolean;
+  isStage: boolean;
+  isCurrentMatchUp: boolean;
+}) => {
+  switch (stat.type) {
+    case "overall":
+      break;
+    case "stage":
+      if (!isStage) return;
+      break;
+    case "currentMatchUp":
+      if (!isCurrentMatchUp) return;
+      break;
+    case "currentMatchUpAndStage":
+      if (!isStage || !isCurrentMatchUp) return;
+  }
+
+  stat.totalCount += 1;
+  stat.winCount += isWin ? 1 : 0;
+  stat.lossCount += isWin ? 0 : 1;
+  stat.winRate = Math.round((stat.winCount / stat.totalCount) * 100 * 10) / 10;
+};
+
+const updateCharacterInfo = ({
+  characterUsage,
+  replayCharacterId,
+}: {
+  characterUsage: CharacterUsageStat[];
+  replayCharacterId: string;
+}) => {
+  const characterUsageStat = characterUsage.find(
+    (characterUsageStat) =>
+      characterUsageStat.characterId === replayCharacterId,
+  );
+  if (characterUsageStat) characterUsageStat.playCount += 1;
+  else
+    characterUsage.push({
+      characterId: replayCharacterId,
+      playCount: 1,
+      playRate: 0,
+    });
+};
+
+const finalizeCharacterInfo = (characterUsage: CharacterUsageStat[]) => {
+  const totalCount = characterUsage.reduce(
+    (total, characterUsageStat) => total + characterUsageStat.playCount,
+    0,
+  );
+  characterUsage.forEach((characterUsageStat) => {
+    characterUsageStat.playRate =
+      Math.round((characterUsageStat.playCount / totalCount) * 100 * 10) / 10;
+  });
+
+  return characterUsage.sort((a, b) => b.playCount - a.playCount).slice(0, 5);
 };
