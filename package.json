@@ -1,6 +1,6 @@
 {
   "name": "melee-dex",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "main": "dist-electron/main/index.js",
   "description": "Live statistics about your Slippi opponents",
   "author": "Jacob DeWar <whiterbread@gmail.com>",
@@ -26,6 +26,7 @@
     "@mui/icons-material": "^7.0.2",
     "@mui/material": "^7.0.2",
     "@slippi/slippi-js": "^6.7.0",
+    "electron-log": "^5.3.4",
     "electron-updater": "^6.3.9",
     "localforage": "^1.10.0",
     "react-router-dom": "^7.5.0",

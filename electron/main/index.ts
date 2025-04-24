@@ -2,6 +2,7 @@ import { app, BrowserWindow } from "electron";
 import os from "node:os";
 import { createMainWindow, destroyMainWindow, mainWindow } from "./utils";
 import electronUpdater, { type AppUpdater } from "electron-updater";
+import log from "electron-log";
 import "./ipc";
 
 export function getAutoUpdater(): AppUpdater {
@@ -10,8 +11,10 @@ export function getAutoUpdater(): AppUpdater {
   const { autoUpdater } = electronUpdater;
   return autoUpdater;
 }
-
-getAutoUpdater().checkForUpdatesAndNotify();
+const autoUpdater = getAutoUpdater();
+autoUpdater.logger = log;
+log.transports.file.level = "info";
+autoUpdater.checkForUpdatesAndNotify();
 
 // Disable GPU Acceleration for Windows 7
 if (os.release().startsWith("6.1")) app.disableHardwareAcceleration();
