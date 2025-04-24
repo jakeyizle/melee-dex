@@ -36,42 +36,6 @@ export const insertBadReplay = async ({
   await badReplaysStore.setItem(name, path);
 };
 
-export const selectReplaysWithBothPlayers = async (connectCodes: string[]) => {
-  let replays: Replay[] = [];
-  await replaysStore.iterate((value: Replay, key) => {
-    if (
-      connectCodes.includes(value.players[0].connectCode) &&
-      connectCodes.includes(value.players[1].connectCode)
-    ) {
-      replays.push(value);
-    }
-  });
-  return replays;
-};
-
-export const selectReplaysWithPlayer = async (connectCode: string) => {
-  let replays: Replay[] = [];
-  await replaysStore.iterate((value: Replay, key) => {
-    if (connectCode === value.players[0].connectCode) {
-      replays.push(value);
-    } else if (connectCode === value.players[1].connectCode) {
-      replays.push(value);
-    }
-  });
-  return replays;
-};
-
-export const selectReplaysWithUser = async (possibleUsers: string[]) => {
-  // either user is set, or we find the most common one
-  const userConnectCode =
-    (await selectSetting("username")).toUpperCase() ||
-    (await getMostCommonUser(possibleUsers));
-  return {
-    userReplays: await selectReplaysWithPlayer(userConnectCode),
-    userConnectCode,
-  };
-};
-
 export const selectReplayCount = async () => {
   return await replaysStore.length();
 };
@@ -102,32 +66,6 @@ export const getMostCommonUser = async (
 
 export const selectBadReplayCount = async () => {
   return await badReplaysStore.length();
-};
-
-export const selectUserAndHeadToHeadReplays = async (
-  userConnectCode: string,
-  liveGameConnectCodes: string[],
-) => {
-  // combining fetching user replays and head to head replays in one function for performance
-  let userReplays: Replay[] = [];
-  let headToHeadReplays: Replay[] = [];
-
-  await replaysStore.iterate((replay: Replay, key) => {
-    const isUserReplay = replay.players.some((player) => {
-      return player.connectCode === userConnectCode;
-    });
-    if (!isUserReplay) return undefined;
-
-    const isHeadToHeadReplay = liveGameConnectCodes.every((connectCode) => {
-      return replay.players.some((player) => {
-        return player.connectCode === connectCode;
-      });
-    });
-
-    isUserReplay && userReplays.push(replay);
-    isHeadToHeadReplay && headToHeadReplays.push(replay);
-  });
-  return { userReplays, headToHeadReplays };
 };
 
 export const determineUserBasedOnLiveGame = async (

@@ -9,7 +9,8 @@ import {
   INDEX_HTML,
 } from "./vite_constants";
 import path from "node:path";
-import { update } from "./update";
+import electronUpdater, { type AppUpdater } from "electron-updater";
+import log from "electron-log";
 
 const NUM_CORES = os.cpus().length;
 export type ReplayFile = { path: string; name: string };
@@ -53,10 +54,12 @@ export async function getReplayFiles(path: string | undefined) {
 }
 
 export const getNumberOfWorkers = (numberOfReplays: number) => {
-  const renderersByCore = Math.floor(10);
+  const renderersByCore = Math.floor(NUM_CORES / 4);
+  const minRenderersByCore = Math.max(10, renderersByCore);
+
   const renderersByFileCount = Math.ceil(numberOfReplays / 10);
 
-  const numRenderers = Math.min(renderersByCore, renderersByFileCount);
+  const numRenderers = Math.min(minRenderersByCore, renderersByFileCount);
   return numRenderers;
 };
 
@@ -97,7 +100,7 @@ export const createInvisWindow = () => {
 
 export const createMainWindow = async () => {
   mainWindow = new BrowserWindow({
-    title: "Main window",
+    title: "MeleeDex",
     icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
     webPreferences: {
       preload: PRELOAD,
@@ -113,28 +116,42 @@ export const createMainWindow = async () => {
     mainWindow.loadFile(INDEX_HTML);
   }
 
-  // Test actively push message to the Electron-Renderer
-  mainWindow.webContents.on("did-finish-load", () => {
-    mainWindow?.webContents.send(
-      "main-process-message",
-      new Date().toLocaleString(),
-    );
-  });
-
   // Make all links open with the browser, not with the application
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https:")) shell.openExternal(url);
     return { action: "deny" };
   });
 
-  // Auto update
-  update(mainWindow);
-
   mainWindow.on("close", () => {
     app.quit();
+  });
+
+  mainWindow.removeMenu();
+  // Auto update
+  const autoUpdater = getAutoUpdater();
+
+  autoUpdater.on("update-available", (info) => {
+    console.log("⬇️ Update available:", info.version);
+    autoUpdater.downloadUpdate();
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log("✅ Update downloaded:", info.version);
+
+    mainWindow?.webContents.send("update-ready");
   });
 };
 
 export const destroyMainWindow = () => {
   mainWindow = null;
 };
+
+function getAutoUpdater(): AppUpdater {
+  // Using destructuring to access autoUpdater due to the CommonJS module of 'electron-updater'.
+  // It is a workaround for ESM compatibility issues, see https://github.com/electron-userland/electron-builder/issues/7976.
+  const { autoUpdater } = electronUpdater;
+  autoUpdater.logger = log;
+  log.transports.file.level = "info";
+
+  return autoUpdater;
+}

@@ -7,6 +7,7 @@ import {
   AppBar,
   createTheme,
   ThemeProvider,
+  Snackbar,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -25,6 +26,19 @@ const theme = createTheme({
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [version, setVersion] = useState("");
+  const [showSnackbar, setShowSnackbar] = useState(false);
+
+  useEffect(() => {
+    const handleUpdateReady = () => {
+      setShowSnackbar(true);
+    };
+
+    window.ipcRenderer.on("update-ready", handleUpdateReady);
+
+    return () => {
+      window.ipcRenderer.off("update-ready", handleUpdateReady);
+    };
+  }, []);
 
   useEffect(() => {
     const getVersion = async () => {
@@ -40,6 +54,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ display: "flex" }}>
+        <Snackbar
+          open={showSnackbar}
+          autoHideDuration={6000}
+          onClose={() => setShowSnackbar(false)}
+          message={
+            "A new update is available and will be installed when you restart the app."
+          }
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        />
         <AppBar position="fixed">
           <Toolbar>
             <Typography variant="h6" component="h1" sx={{ fontWeight: "bold" }}>

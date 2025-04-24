@@ -1,8 +1,14 @@
 import { create } from "zustand";
-import { Replay, selectBadReplayCount, selectReplayCount } from "@/db/replays";
+import {
+  getMostCommonUser,
+  Replay,
+  selectBadReplayCount,
+  selectReplayCount,
+} from "@/db/replays";
 import { CurrentReplayInfo, LiveReplayPlayers, StatInfo } from "@/types";
 import { selectAllReplayNames } from "@/db/replays";
 import { getStatInfo } from "./utils/statUtils";
+import { updateUsernameIfEmpty } from "./db/settings";
 
 type ReplayStore = {
   // Shared state
@@ -93,7 +99,7 @@ export const setupReplayStoreIpcListeners = () => {
     const { statInfo, headToHeadReplays } = currentReplayInfo
       ? await getStatInfo({ currentReplayInfo })
       : { statInfo: null, headToHeadReplays: [] };
-
+    await updateUsernameIfEmpty(await getMostCommonUser([]));
     setState({
       isLoadingReplays: false,
       currentReplaysLoaded: 0,

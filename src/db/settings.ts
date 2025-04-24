@@ -22,3 +22,8 @@ export const upsertSettings = async (
     await upsertSetting(setting.key, setting.value);
   }
 };
+
+export const updateUsernameIfEmpty = async (username: string) => {
+  const currentUsername = await selectSetting("username");
+  if (!currentUsername) upsertSetting("username", username.toUpperCase());
+};
