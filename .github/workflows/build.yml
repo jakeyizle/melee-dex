@@ -37,6 +37,7 @@ jobs:
         with:
           files: |
             release/${{ steps.vars.outputs.version }}/melee-dex_${{ steps.vars.outputs.version }}.exe
+            release/${{ steps.vars.outputs.version }}/melee-dex_${{ steps.vars.outputs.version }}.exe.blockmap
             release/${{ steps.vars.outputs.version }}/latest.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

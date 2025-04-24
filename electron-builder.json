@@ -28,6 +28,6 @@
   "publish": {
     "provider": "generic",
     "channel": "latest",
-    "url": "https://github.com/jakeyizle/melee-dex/releases/download"
+    "url": "https://github.com/jakeyizle/melee-dex/releases/latest/download"
   }
 }
