@@ -1,6 +1,10 @@
-import { ipcMain, dialog } from "electron";
+import { ipcMain, dialog, app } from "electron";
 import { ReplayLoadManager } from "./replayLoadManager";
 const replayLoadManager = ReplayLoadManager.getInstance();
+
+ipcMain.handle("get-app-version", () => {
+  return app.getVersion();
+});
 
 ipcMain.handle("select-directory", async (event, arg) => {
   const { canceled, filePaths } = await dialog.showOpenDialog({

@@ -9,6 +9,7 @@ import {
   ThemeProvider,
 } from "@mui/material";
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 const theme = createTheme({
   palette: {
@@ -23,6 +24,18 @@ const theme = createTheme({
 });
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const [version, setVersion] = useState("");
+
+  useEffect(() => {
+    const getVersion = async () => {
+      const version = await window.ipcRenderer.invoke("get-app-version");
+      setVersion(version);
+    };
+    getVersion();
+  }, []);
+
+  const title = version ? `MeleeDex v${version}` : "MeleeDex";
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -30,7 +43,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <AppBar position="fixed">
           <Toolbar>
             <Typography variant="h6" component="h1" sx={{ fontWeight: "bold" }}>
-              MeleeDex
+              {title}
             </Typography>
             <Box sx={{ ml: "auto", display: "flex", gap: 3 }}>
               <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
