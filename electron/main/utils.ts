@@ -130,6 +130,8 @@ export const createMainWindow = async () => {
   // Auto update
   const autoUpdater = getAutoUpdater();
 
+  autoUpdater.checkForUpdates();
+
   autoUpdater.on("update-available", (info) => {
     console.log("⬇️ Update available:", info.version);
     autoUpdater.downloadUpdate();
