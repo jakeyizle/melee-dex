@@ -8,9 +8,12 @@ import {
   createTheme,
   ThemeProvider,
   Snackbar,
+  IconButton,
+  SnackbarContent,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import CloseIcon from "@mui/icons-material/Close";
 
 const theme = createTheme({
   palette: {
@@ -32,9 +35,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const handleUpdateReady = () => {
       setShowSnackbar(true);
     };
-
     window.ipcRenderer.on("update-ready", handleUpdateReady);
-
+    window.ipcRenderer.invoke("check-for-updates");
     return () => {
       window.ipcRenderer.off("update-ready", handleUpdateReady);
     };
@@ -58,10 +60,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           open={showSnackbar}
           autoHideDuration={6000}
           onClose={() => setShowSnackbar(false)}
-          message={
-            "A new update is available and will be installed when you restart the app."
-          }
           anchorOrigin={{ vertical: "top", horizontal: "center" }}
+          message={
+            "An update has been downloaded and will be installed when you close the app."
+          }
+          action={
+            <IconButton
+              size="small"
+              aria-label="close"
+              color="inherit"
+              onClick={() => setShowSnackbar(false)}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          }
         />
         <AppBar position="fixed">
           <Toolbar>
@@ -94,20 +106,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   Settings
                 </Typography>
               </Link>
-              {/* <Link
-                to="/history"
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: 500,
-                    "&:hover": { textDecoration: "underline" },
-                  }}
-                >
-                  Match History
-                </Typography>
-              </Link> */}
             </Box>
           </Toolbar>
         </AppBar>

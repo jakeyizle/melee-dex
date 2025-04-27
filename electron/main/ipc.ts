@@ -1,11 +1,35 @@
 import { ipcMain, dialog, app } from "electron";
 import { ReplayLoadManager } from "./replayLoadManager";
+import electronUpdater from "electron-updater";
+import log from "electron-log";
 const replayLoadManager = ReplayLoadManager.getInstance();
 
+// version
 ipcMain.handle("get-app-version", () => {
   return app.getVersion();
 });
 
+// update
+let hasUpdated = false;
+ipcMain.handle("check-for-updates", (event) => {
+  if (hasUpdated) return;
+  hasUpdated = true;
+  const { autoUpdater } = electronUpdater;
+  autoUpdater.logger = log;
+  log.transports.file.level = "info";
+  autoUpdater.forceDevUpdateConfig = true;
+  autoUpdater.checkForUpdates();
+
+  autoUpdater.on("update-available", (info) => {
+    autoUpdater.downloadUpdate();
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    event.sender.send("update-ready");
+  });
+});
+
+// settings
 ipcMain.handle("select-directory", async (event, arg) => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ["openDirectory"],
@@ -18,6 +42,7 @@ ipcMain.handle("select-directory", async (event, arg) => {
   }
 });
 
+// replay loading
 ipcMain.handle(
   "begin-loading-replays",
   async (

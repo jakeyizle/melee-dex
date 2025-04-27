@@ -9,8 +9,6 @@ import {
   INDEX_HTML,
 } from "./vite_constants";
 import path from "node:path";
-import electronUpdater, { type AppUpdater } from "electron-updater";
-import log from "electron-log";
 
 const NUM_CORES = os.cpus().length;
 export type ReplayFile = { path: string; name: string };
@@ -101,11 +99,14 @@ export const createInvisWindow = () => {
 export const createMainWindow = async () => {
   mainWindow = new BrowserWindow({
     title: "MeleeDex",
+    height: 0,
+    width: 0,
     icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
     webPreferences: {
       preload: PRELOAD,
     },
   });
+  mainWindow.maximize();
 
   if (VITE_DEV_SERVER_URL) {
     // #298
@@ -127,33 +128,8 @@ export const createMainWindow = async () => {
   });
 
   mainWindow.removeMenu();
-  // Auto update
-  const autoUpdater = getAutoUpdater();
-
-  autoUpdater.checkForUpdates();
-
-  autoUpdater.on("update-available", (info) => {
-    console.log("⬇️ Update available:", info.version);
-    autoUpdater.downloadUpdate();
-  });
-
-  autoUpdater.on("update-downloaded", (info) => {
-    console.log("✅ Update downloaded:", info.version);
-
-    mainWindow?.webContents.send("update-ready");
-  });
 };
 
 export const destroyMainWindow = () => {
   mainWindow = null;
 };
-
-function getAutoUpdater(): AppUpdater {
-  // Using destructuring to access autoUpdater due to the CommonJS module of 'electron-updater'.
-  // It is a workaround for ESM compatibility issues, see https://github.com/electron-userland/electron-builder/issues/7976.
-  const { autoUpdater } = electronUpdater;
-  autoUpdater.logger = log;
-  log.transports.file.level = "info";
-
-  return autoUpdater;
-}
