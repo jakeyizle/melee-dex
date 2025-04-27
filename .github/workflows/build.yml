@@ -42,9 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download previous blockmap (optional)
-        run: |
-          curl -fL "https://github.com/jakeyizle/melee-dex/releases/download/v${{ env.previous_version }}/melee-dex_${{ env.previous_version }}.exe.blockmap" \
-            -o "release/${{ steps.vars.outputs.version }}/melee-dex_${{ env.previous_version }}.exe.blockmap" || echo "Previous blockmap not found, continuing without it."
+        run: curl -fL "https://github.com/jakeyizle/melee-dex/releases/download/v${{ env.previous_version }}/melee-dex_${{ env.previous_version }}.exe.blockmap" -o "release/${{ steps.vars.outputs.version }}/melee-dex_${{ env.previous_version }}.exe.blockmap" || echo "Previous blockmap not found, continuing without it."
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
