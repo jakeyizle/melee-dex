@@ -38,6 +38,8 @@ jobs:
         run: |
           latest_tag=$(gh release view --json tagName --jq .tagName)
           echo "previous_version=${latest_tag#v}" >> $GITHUB_ENV
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download previous blockmap (optional)
         run: |
