@@ -34,6 +34,7 @@ jobs:
 
       - name: Fetch previous version
         id: previous_version
+        shell: bash
         run: |
           latest_tag=$(gh release view --json tagName --jq .tagName)
           echo "previous_version=${latest_tag#v}" >> $GITHUB_ENV
