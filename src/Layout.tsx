@@ -18,12 +18,6 @@ import CloseIcon from "@mui/icons-material/Close";
 const theme = createTheme({
   palette: {
     mode: "dark",
-    // primary: {
-    //   main: "#6366f1",
-    // },
-    // secondary: {
-    //   main: "#f59e0b",
-    // },
   },
 });
 

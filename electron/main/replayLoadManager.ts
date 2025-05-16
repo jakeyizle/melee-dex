@@ -102,9 +102,14 @@ export class ReplayLoadManager {
   public endLoadingReplays(webContents?: WebContents) {
     // keep 1 worker in background, so we can avoid spinning new workers to load 1 file at a time
     if (this.workerWebContents.length <= 1 || !webContents) {
+      if (this.isLoadingSingleReplay) {
+        mainWindow?.webContents.send("update-stats");
+      } else {
+        mainWindow?.webContents.send("end-loading-replays");
+      }
       this.isLoadingReplayDirectory = false;
       this.isLoadingSingleReplay = false;
-      mainWindow?.webContents.send("end-loading-replays");
+
       this.listenForReplayFile(this.replayDirectory);
       return;
     }

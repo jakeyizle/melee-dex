@@ -46,3 +46,37 @@ export type StatInfo = {
   userStat: BaseStat[];
   headToHeadStat: BaseStat[];
 };
+
+export type Stat = {
+  totalCount: number;
+  winCount: number;
+  lossCount: number;
+  winRate: number;
+};
+
+export type StageStat = Stat & {
+  stageId: string;
+};
+
+export type MatchupStat = Stat & {
+  userCharacterId: string;
+  opponentCharacterId: string;
+};
+
+export type MatchupAndStageStat = StageStat & MatchupStat;
+
+export type Stats = {
+  overallStat: Stat;
+  stageStats: StageStat[];
+  matchupStats: MatchupStat[];
+  matchupAndStageStats: MatchupAndStageStat[];
+};
+
+export type OpponentStats = Stats & {
+  opponentConnectCode: string;
+};
+
+export type FullStats = {
+  stats: Stats;
+  opponentSpecificStats: OpponentStats[];
+};

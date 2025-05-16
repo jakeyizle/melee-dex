@@ -76,3 +76,6 @@ export const getStageNameFromId = (id: string) => {
   }
   return stageNames[id_number];
 };
+
+// legal stages are: Fountain of Dreams, Pokémon Stadium, Dreamland, Battlefield, Final Destination, Yoshi's Story
+export const LEGAL_STAGE_IDS = [2, 3, 8, 28, 31, 32];

@@ -1,13 +1,24 @@
 import { create } from "zustand";
 import {
+  attemptGetUser,
+  determineUserBasedOnLiveGame,
   getMostCommonUser,
   Replay,
   selectBadReplayCount,
   selectReplayCount,
 } from "@/db/replays";
-import { CurrentReplayInfo, LiveReplayPlayers, StatInfo } from "@/types";
+import {
+  CurrentReplayInfo,
+  FullStats,
+  LiveReplayPlayers,
+  StatInfo,
+} from "@/types";
 import { selectAllReplayNames } from "@/db/replays";
-import { getStatInfo } from "./utils/statUtils";
+import {
+  getStatInfo,
+  getStats,
+  updateStatsWithReplay,
+} from "./utils/statUtils";
 import { updateUsernameIfEmpty } from "./db/settings";
 
 type ReplayStore = {
@@ -16,6 +27,7 @@ type ReplayStore = {
   currentLiveFileName: string;
   headToHeadReplays: Replay[];
   statInfo: StatInfo | null;
+  newStatInfo: FullStats | null;
 
   // Load progress
   isLoadingReplays: boolean;
@@ -39,6 +51,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
   currentLiveFileName: "",
   headToHeadReplays: [],
   statInfo: null,
+  newStatInfo: null,
 
   isLoadingReplays: false,
   currentReplaysLoaded: 0,
@@ -59,17 +72,18 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
 
   handleLiveReplay: async ({ filename, players, stageId }) => {
     const currentLiveFileName = get().currentLiveFileName;
-
+    const startTime = Date.now();
     if (filename === currentLiveFileName) return;
-    const { statInfo, headToHeadReplays } = await getStatInfo({
-      currentReplayInfo: { players, stageId },
-    });
-
+    // const { statInfo, headToHeadReplays } = await getStatInfo({
+    //   currentReplayInfo: { players, stageId },
+    // });
+    console.log("handleLiveReplay", Date.now() - startTime);
     set({
       currentReplayInfo: { players, stageId },
       currentLiveFileName: filename,
-      statInfo,
-      headToHeadReplays,
+      // statInfo,
+      // headToHeadReplays,
+      // newStatInfo,
     });
   },
 }));
@@ -95,11 +109,15 @@ export const setupReplayStoreIpcListeners = () => {
   window.ipcRenderer.on("end-loading-replays", async (_event, args) => {
     const totalReplayCount = await selectReplayCount();
     const totalBadReplayCount = await selectBadReplayCount();
-    const { currentReplayInfo } = getState();
-    const { statInfo, headToHeadReplays } = currentReplayInfo
-      ? await getStatInfo({ currentReplayInfo })
-      : { statInfo: null, headToHeadReplays: [] };
-    await updateUsernameIfEmpty(await getMostCommonUser([]));
+    // const { currentReplayInfo } = getState();
+    // const { statInfo, headToHeadReplays } = currentReplayInfo
+    //   ? await getStatInfo({ currentReplayInfo })
+    //   : { statInfo: null, headToHeadReplays: [] };
+    const userConnectCode = await updateUsernameIfEmpty(
+      await getMostCommonUser([]),
+    );
+    const statInfo = userConnectCode ? await getStats(userConnectCode) : null;
+    console.log(statInfo);
     setState({
       isLoadingReplays: false,
       currentReplaysLoaded: 0,
@@ -107,8 +125,22 @@ export const setupReplayStoreIpcListeners = () => {
       replaysPerSecond: 0,
       totalReplayCount,
       totalBadReplayCount,
-      statInfo,
-      headToHeadReplays,
+      newStatInfo: statInfo,
+      // statInfo,
+      // headToHeadReplays,
     });
+  });
+
+  window.ipcRenderer.on("update-stats", async () => {
+    const { currentReplayInfo, newStatInfo } = getState();
+    const userConnectCode = currentReplayInfo
+      ? await determineUserBasedOnLiveGame(
+          currentReplayInfo.players.map((player) => player.connectCode),
+        )
+      : await attemptGetUser();
+    if (!userConnectCode || !newStatInfo) return;
+    const stats = await updateStatsWithReplay(newStatInfo, userConnectCode);
+    console.log("update-stats", stats);
+    setState({ newStatInfo: stats });
   });
 };
