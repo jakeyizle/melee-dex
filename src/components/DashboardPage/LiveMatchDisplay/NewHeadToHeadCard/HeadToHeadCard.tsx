@@ -16,31 +16,35 @@ import { PaperDisplay } from "./PaperDisplay";
 import { getTimeString } from "@/utils/displayUtils";
 import { GamesPlayedPaperDisplay } from "./GamesPlayedPaperDisplay";
 import { CharacterUsagePaper } from "./CharacterUsagePaper";
+import { getCurrentHeadToHeadStats } from "@/utils/statUtils";
 
 const getPercentageString = (percentage: number) => {
   return Math.round(percentage * 100) / 100 + "%";
 };
 
 export const HeadToHeadCard = () => {
-  const { statInfo, headToHeadReplays } = useReplayStore();
-  if (!statInfo) return null;
+  const { headToHeadStats, userConnectCode, currentReplayInfo } =
+    useReplayStore();
+  // const { statInfo, headToHeadReplays } = useReplayStore();
+  if (!headToHeadStats || !currentReplayInfo) return null;
 
-  const overAllHeadToHeadStat = statInfo.headToHeadStat.find(
-    (stat) => stat.type === "overall",
-  )!;
+  const user = currentReplayInfo.players.find(
+    (player) => player.connectCode === userConnectCode,
+  );
 
-  const matchupHeadToHeadStat = statInfo.headToHeadStat.find(
-    (stat) => stat.type === "currentMatchUp",
-  )!;
+  const opponent = currentReplayInfo.players.find(
+    (player) => player.connectCode !== userConnectCode,
+  );
+  if (!user || !opponent) return null;
 
-  const firstMatchDate = () => {
-    if (headToHeadReplays.length === 0) return "-";
-    // sort by date
-    const sortedReplays = headToHeadReplays.sort((b, a) => {
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
-    return getTimeString(sortedReplays[0].date);
-  };
+  // const firstMatchDate = () => {
+  //   if (headToHeadReplays.length === 0) return "-";
+  //   // sort by date
+  //   const sortedReplays = headToHeadReplays.sort((b, a) => {
+  //     return new Date(b.date).getTime() - new Date(a.date).getTime();
+  //   });
+  //   return getTimeString(sortedReplays[0].date);
+  // };
 
   const playerOneColor = "orange";
   const playerTwoColor = "lightblue";
@@ -64,23 +68,23 @@ export const HeadToHeadCard = () => {
         <Grid container spacing={2}>
           <Grid size={{ xs: 4 }} display="flex" justifyContent={"start"}>
             <PlayerAvatar
-              connectCode={statInfo.userInfo.connectCode}
-              characterId={statInfo.userInfo.currentCharacterId}
+              connectCode={user.connectCode}
+              characterId={user.characterId}
               avatarBgColor={playerOneColor}
             />
           </Grid>
           <Grid size={{ xs: 4 }} display="flex" justifyContent={"center"}>
             <HeadToHeadScore
-              winCount={overAllHeadToHeadStat.winCount}
+              winCount={headToHeadStats.overallStat.winCount}
               winColor={playerOneColor}
-              lossCount={overAllHeadToHeadStat.lossCount}
+              lossCount={headToHeadStats.overallStat.lossCount}
               lossColor={playerTwoColor}
             />
           </Grid>
           <Grid size={{ xs: 4 }} display="flex" justifyContent={"end"}>
             <PlayerAvatar
-              connectCode={statInfo.opponentInfo.connectCode}
-              characterId={statInfo.opponentInfo.currentCharacterId}
+              connectCode={opponent.connectCode}
+              characterId={opponent.characterId}
               isFlipped
               avatarBgColor={playerTwoColor}
             />
@@ -88,7 +92,7 @@ export const HeadToHeadCard = () => {
 
           <Grid size={{ xs: 4 }}>
             <GamesPlayedPaperDisplay
-              stat={overAllHeadToHeadStat}
+              stat={headToHeadStats.overallStat}
               playerOneColor={playerOneColor}
               playerTwoColor={playerTwoColor}
             />
@@ -96,11 +100,12 @@ export const HeadToHeadCard = () => {
           <Grid size={{ xs: 4 }}>
             <PaperDisplay
               title="Win Rate"
-              value={getPercentageString(overAllHeadToHeadStat.winRate)}
+              value={getPercentageString(headToHeadStats.overallStat.winRate)}
             />
           </Grid>
           <Grid size={{ xs: 4 }}>
-            <PaperDisplay title="First Seen" value={firstMatchDate()} />
+            {/* <PaperDisplay title="First Seen" value={firstMatchDate()} /> */}
+            <PaperDisplay title="First Seen" value={'TODO'} />
           </Grid>
 
           <Grid size={{ xs: 12 }}>

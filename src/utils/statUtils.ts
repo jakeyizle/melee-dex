@@ -1,20 +1,15 @@
 import {
-  determineUserBasedOnLiveGame,
   executeCallbackOnEachReplay,
   Replay,
   selectLatestReplay,
 } from "@/db/replays";
 import {
-  BaseStat,
-  CurrentReplayInfo,
-  StatInfo,
-  StatType,
-  CharacterUsageStat,
   FullStats,
   Stat,
   MatchupAndStageStat,
   MatchupStat,
   StageStat,
+  CurrentReplayInfo,
 } from "@/types";
 
 export const getMostRecentMatches = (
@@ -25,181 +20,6 @@ export const getMostRecentMatches = (
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
   return sortedReplays.slice(0, numberOfReplays);
-};
-
-export const getStatInfo = async ({
-  currentReplayInfo,
-}: {
-  currentReplayInfo: CurrentReplayInfo;
-}) => {
-  const userConnectCode = await determineUserBasedOnLiveGame(
-    currentReplayInfo.players.map((player) => player.connectCode),
-  );
-  const userCharacterId = currentReplayInfo.players.find(
-    (player) => player.connectCode === userConnectCode,
-  )?.characterId;
-
-  const opponentConnectCode = currentReplayInfo.players.find(
-    (player) => player.connectCode !== userConnectCode,
-  )?.connectCode;
-  const opponentCharacterId = currentReplayInfo.players.find(
-    (player) => player.connectCode !== userConnectCode,
-  )?.characterId;
-
-  const stageId = currentReplayInfo.stageId;
-
-  if (!userCharacterId || !opponentConnectCode || !opponentCharacterId) {
-    return { statInfo: null, headToHeadReplays: [] };
-  }
-
-  const statInfo: StatInfo = {
-    userInfo: {
-      connectCode: userConnectCode,
-      currentCharacterId: userCharacterId,
-      characterUsage: [],
-    },
-    opponentInfo: {
-      connectCode: opponentConnectCode,
-      currentCharacterId: opponentCharacterId,
-      characterUsage: [],
-    },
-    userStat: initalizeStats(),
-    headToHeadStat: initalizeStats(),
-  };
-  const headToHeadReplays: Replay[] = [];
-
-  const getStatsFromReplay = (replay: Replay) => {
-    // only include stats if user is in the replay
-    const replayUser = replay.players.find((player) => {
-      return player.connectCode === userConnectCode;
-    });
-    if (!replayUser) return undefined;
-
-    const replayOpponent = replay.players.find((player) => {
-      return player.connectCode === opponentConnectCode;
-    });
-    if (replayOpponent) {
-      updateCharacterInfo({
-        characterUsage: statInfo.userInfo.characterUsage,
-        replayCharacterId: replayUser.characterId,
-      });
-
-      updateCharacterInfo({
-        characterUsage: statInfo.opponentInfo.characterUsage,
-        replayCharacterId: replayOpponent.characterId,
-      });
-
-      headToHeadReplays.push(replay);
-    }
-
-    if (replayUser.characterId !== userCharacterId) return undefined;
-
-    const isWin = replay.winnerConnectCode === userConnectCode;
-    const isStage = replay.stageId == stageId;
-    // any opponent is playing the current opponent character
-    const isCurrentMatchUp = replay.players.some((player) => {
-      return (
-        player.connectCode !== userConnectCode &&
-        player.characterId == opponentCharacterId
-      );
-    });
-    statInfo.userStat.forEach((stat) =>
-      updateStat({ stat, isWin, isStage, isCurrentMatchUp }),
-    );
-
-    if (replayOpponent)
-      statInfo.headToHeadStat.forEach((stat) =>
-        updateStat({ stat, isWin, isStage, isCurrentMatchUp }),
-      );
-  };
-  await executeCallbackOnEachReplay((replay) => getStatsFromReplay(replay));
-
-  finalizeCharacterInfo(statInfo.userInfo.characterUsage);
-  finalizeCharacterInfo(statInfo.opponentInfo.characterUsage);
-
-  return { statInfo, headToHeadReplays };
-};
-
-const initalizeStat = (type: StatType): BaseStat => {
-  return {
-    type,
-    totalCount: 0,
-    winCount: 0,
-    lossCount: 0,
-    winRate: 0,
-  };
-};
-
-const initalizeStats = (): BaseStat[] => {
-  return [
-    initalizeStat("overall"),
-    initalizeStat("stage"),
-    initalizeStat("currentMatchUp"),
-    initalizeStat("currentMatchUpAndStage"),
-  ];
-};
-
-const updateStat = ({
-  stat,
-  isWin,
-  isStage,
-  isCurrentMatchUp,
-}: {
-  stat: BaseStat;
-  isWin: boolean;
-  isStage: boolean;
-  isCurrentMatchUp: boolean;
-}) => {
-  switch (stat.type) {
-    case "overall":
-      break;
-    case "stage":
-      if (!isStage) return;
-      break;
-    case "currentMatchUp":
-      if (!isCurrentMatchUp) return;
-      break;
-    case "currentMatchUpAndStage":
-      if (!isStage || !isCurrentMatchUp) return;
-  }
-
-  stat.totalCount += 1;
-  stat.winCount += isWin ? 1 : 0;
-  stat.lossCount += isWin ? 0 : 1;
-  stat.winRate = Math.round((stat.winCount / stat.totalCount) * 100 * 10) / 10;
-};
-
-const updateCharacterInfo = ({
-  characterUsage,
-  replayCharacterId,
-}: {
-  characterUsage: CharacterUsageStat[];
-  replayCharacterId: string;
-}) => {
-  const characterUsageStat = characterUsage.find(
-    (characterUsageStat) =>
-      characterUsageStat.characterId === replayCharacterId,
-  );
-  if (characterUsageStat) characterUsageStat.playCount += 1;
-  else
-    characterUsage.push({
-      characterId: replayCharacterId,
-      playCount: 1,
-      playRate: 0,
-    });
-};
-
-const finalizeCharacterInfo = (characterUsage: CharacterUsageStat[]) => {
-  const totalCount = characterUsage.reduce(
-    (total, characterUsageStat) => total + characterUsageStat.playCount,
-    0,
-  );
-  characterUsage.forEach((characterUsageStat) => {
-    characterUsageStat.playRate =
-      Math.round((characterUsageStat.playCount / totalCount) * 100 * 10) / 10;
-  });
-
-  return characterUsage.sort((a, b) => b.playCount - a.playCount).slice(0, 5);
 };
 
 export const getStats = async (userConnectCode: string): Promise<FullStats> => {
@@ -418,4 +238,56 @@ export const updateStatsWithReplay = async (
     return;
   getStatsFromReplay(replay, userConnectCode, fullStats);
   return fullStats;
+};
+
+export const getCurrentHeadToHeadStats = (
+  fullStats: FullStats,
+  currentReplayInfo: CurrentReplayInfo,
+  userConnectCode: string,
+) => {
+  const player = currentReplayInfo.players.find(
+    (player) => player.connectCode === userConnectCode,
+  );
+  const opponent = currentReplayInfo.players.find(
+    (player) => player.connectCode !== userConnectCode,
+  );
+
+  if (!player || !opponent) return null;
+
+  const opponentStats = fullStats.opponentSpecificStats.find((opponentStat) => {
+    return opponentStat.opponentConnectCode === opponent.connectCode;
+  });
+  if (!opponentStats) return null;
+
+  const stageId = currentReplayInfo.stageId;
+
+  const opponentStageStat = opponentStats.stageStats.find((stageStat) => {
+    return stageStat.stageId === stageId;
+  });
+
+  const opponentMatchupStats = opponentStats.matchupStats.find(
+    (matchupStat) => {
+      return (
+        matchupStat.userCharacterId === player.characterId &&
+        matchupStat.opponentCharacterId === opponent.characterId
+      );
+    },
+  );
+
+  const opponentMatchupStageStats = opponentStats.matchupAndStageStats.find(
+    (matchupAndStageStat) => {
+      return (
+        matchupAndStageStat.userCharacterId === player.characterId &&
+        matchupAndStageStat.opponentCharacterId === opponent.characterId &&
+        matchupAndStageStat.stageId === stageId
+      );
+    },
+  );
+
+  return {
+    overallStat: opponentStats.overallStat,
+    stageStat: opponentStageStat,
+    matchupStat: opponentMatchupStats,
+    matchupAndStageStat: opponentMatchupStageStats,
+  };
 };

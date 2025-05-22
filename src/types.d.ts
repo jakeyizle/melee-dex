@@ -80,3 +80,10 @@ export type FullStats = {
   stats: Stats;
   opponentSpecificStats: OpponentStats[];
 };
+
+export type HeadToHeadStats = {
+  overallStat: Stat;
+  stageStat: StageStat | undefined;
+  matchupStat: MatchupStat | undefined;
+  matchupAndStageStat: MatchupAndStageStat | undefined;
+};

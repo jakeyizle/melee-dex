@@ -10,12 +10,13 @@ import {
 import {
   CurrentReplayInfo,
   FullStats,
+  HeadToHeadStats,
   LiveReplayPlayers,
   StatInfo,
 } from "@/types";
 import { selectAllReplayNames } from "@/db/replays";
 import {
-  getStatInfo,
+  getCurrentHeadToHeadStats,
   getStats,
   updateStatsWithReplay,
 } from "./utils/statUtils";
@@ -28,6 +29,8 @@ type ReplayStore = {
   headToHeadReplays: Replay[];
   statInfo: StatInfo | null;
   newStatInfo: FullStats | null;
+  userConnectCode: string;
+  headToHeadStats: HeadToHeadStats | null;
 
   // Load progress
   isLoadingReplays: boolean;
@@ -52,6 +55,8 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
   headToHeadReplays: [],
   statInfo: null,
   newStatInfo: null,
+  userConnectCode: "",
+  headToHeadStats: null,
 
   isLoadingReplays: false,
   currentReplaysLoaded: 0,
@@ -72,18 +77,20 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
 
   handleLiveReplay: async ({ filename, players, stageId }) => {
     const currentLiveFileName = get().currentLiveFileName;
-    const startTime = Date.now();
     if (filename === currentLiveFileName) return;
-    // const { statInfo, headToHeadReplays } = await getStatInfo({
-    //   currentReplayInfo: { players, stageId },
-    // });
-    console.log("handleLiveReplay", Date.now() - startTime);
+
+    const newStatInfo = get().newStatInfo;
+    const headToHeadStats = newStatInfo
+      ? getCurrentHeadToHeadStats(
+          newStatInfo,
+          { players, stageId },
+          get().userConnectCode,
+        )
+      : null;
     set({
       currentReplayInfo: { players, stageId },
       currentLiveFileName: filename,
-      // statInfo,
-      // headToHeadReplays,
-      // newStatInfo,
+      headToHeadStats,
     });
   },
 }));
@@ -126,8 +133,7 @@ export const setupReplayStoreIpcListeners = () => {
       totalReplayCount,
       totalBadReplayCount,
       newStatInfo: statInfo,
-      // statInfo,
-      // headToHeadReplays,
+      userConnectCode,
     });
   });
 
@@ -141,6 +147,6 @@ export const setupReplayStoreIpcListeners = () => {
     if (!userConnectCode || !newStatInfo) return;
     const stats = await updateStatsWithReplay(newStatInfo, userConnectCode);
     console.log("update-stats", stats);
-    setState({ newStatInfo: stats });
+    setState({ newStatInfo: stats, userConnectCode });
   });
 };

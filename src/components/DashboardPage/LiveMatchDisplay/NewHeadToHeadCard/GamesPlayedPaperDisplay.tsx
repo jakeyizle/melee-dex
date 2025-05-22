@@ -2,7 +2,11 @@ import { BaseStat } from "@/types";
 import { Paper, Typography } from "@mui/material";
 
 interface GamesPlayedDisplayProps {
-  stat: BaseStat;
+  stat: {
+    totalCount: number;
+    winCount: number;
+    lossCount: number;
+  };
   playerOneColor: string;
   playerTwoColor: string;
 }
