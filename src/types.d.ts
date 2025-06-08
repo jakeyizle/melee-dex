@@ -1,3 +1,5 @@
+import { Character } from "@slippi/slippi-js";
+
 export type LiveReplayPlayers = {
   connectCode: string;
   name: string;
@@ -74,6 +76,8 @@ export type Stats = {
 
 export type OpponentStats = Stats & {
   opponentConnectCode: string;
+  firstMatchDate: string;
+  lastMatchDate: string;
 };
 
 export type FullStats = {
@@ -82,8 +86,7 @@ export type FullStats = {
 };
 
 export type HeadToHeadStats = {
-  overallStat: Stat;
-  stageStat: StageStat | undefined;
-  matchupStat: MatchupStat | undefined;
-  matchupAndStageStat: MatchupAndStageStat | undefined;
+  opponentStats: OpponentStats;
+  userCharacterUsages?: CharacterUsageStat[];
+  opponentCharacterUsages?: CharacterUsageStat[];
 };

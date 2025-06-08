@@ -2,7 +2,7 @@ import { BaseStat } from "@/types";
 import { Paper, Typography } from "@mui/material";
 
 interface GamesPlayedDisplayProps {
-  stat: {
+  stat?: {
     totalCount: number;
     winCount: number;
     lossCount: number;
@@ -16,6 +16,7 @@ export const GamesPlayedPaperDisplay = ({
   playerOneColor,
   playerTwoColor,
 }: GamesPlayedDisplayProps) => {
+  stat ||= { totalCount: 0, winCount: 0, lossCount: 0 };
   const winCount = (
     <Typography color={playerOneColor} component="span" variant="h6">
       {stat.winCount}

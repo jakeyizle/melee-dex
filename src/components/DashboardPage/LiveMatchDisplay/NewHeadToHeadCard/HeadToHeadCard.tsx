@@ -1,14 +1,11 @@
 import {
-  Avatar,
   Box,
   Card,
   CardContent,
   CardHeader,
   Grid,
-  Paper,
   Typography,
 } from "@mui/material";
-import { StageStatisticsTable } from "./StageStatisticsTable";
 import { useReplayStore } from "@/replayStore";
 import { PlayerAvatar } from "./PlayerAvatar";
 import { HeadToHeadScore } from "./HeadToHeadScore";
@@ -16,17 +13,40 @@ import { PaperDisplay } from "./PaperDisplay";
 import { getTimeString } from "@/utils/displayUtils";
 import { GamesPlayedPaperDisplay } from "./GamesPlayedPaperDisplay";
 import { CharacterUsagePaper } from "./CharacterUsagePaper";
-import { getCurrentHeadToHeadStats } from "@/utils/statUtils";
+import { StatsTable } from "./StatsTable";
+import { useEffect, useState } from "react";
+import { MatchupSelect } from "./MatchupSelect";
 
-const getPercentageString = (percentage: number) => {
-  return Math.round(percentage * 100) / 100 + "%";
+const getPercentageString = (percentage: number | undefined) => {
+  return percentage !== undefined
+    ? Math.round(percentage * 100) / 100 + "%"
+    : "-";
 };
 
 export const HeadToHeadCard = () => {
-  const { headToHeadStats, userConnectCode, currentReplayInfo } =
+  const [userCharacterDisplay, setUserCharacterDisplay] = useState<string>("");
+  const [opponentCharacterDisplay, setOpponentCharacterDisplay] =
+    useState<string>("");
+
+  const { newStatInfo, headToHeadStats, userConnectCode, currentReplayInfo } =
     useReplayStore();
-  // const { statInfo, headToHeadReplays } = useReplayStore();
-  if (!headToHeadStats || !currentReplayInfo) return null;
+
+  useEffect(() => {
+    if (currentReplayInfo === null) return;
+    const user = currentReplayInfo.players.find(
+      (player) => player.connectCode === userConnectCode,
+    );
+
+    const opponent = currentReplayInfo.players.find(
+      (player) => player.connectCode !== userConnectCode,
+    );
+
+    if (!user || !opponent) return;
+    setUserCharacterDisplay(user.characterId);
+    setOpponentCharacterDisplay(opponent.characterId);
+  }, [currentReplayInfo, userConnectCode]);
+
+  if (!headToHeadStats || !currentReplayInfo || !newStatInfo) return null;
 
   const user = currentReplayInfo.players.find(
     (player) => player.connectCode === userConnectCode,
@@ -37,18 +57,34 @@ export const HeadToHeadCard = () => {
   );
   if (!user || !opponent) return null;
 
-  // const firstMatchDate = () => {
-  //   if (headToHeadReplays.length === 0) return "-";
-  //   // sort by date
-  //   const sortedReplays = headToHeadReplays.sort((b, a) => {
-  //     return new Date(b.date).getTime() - new Date(a.date).getTime();
-  //   });
-  //   return getTimeString(sortedReplays[0].date);
-  // };
+  const currentMatchUp = {
+    userCharacterId: userCharacterDisplay || user.characterId,
+    opponentCharacterId: opponentCharacterDisplay || opponent.characterId,
+  };
+
+  const matchupStat = headToHeadStats.opponentStats.matchupStats.find(
+    (matchupStat) => {
+      return (
+        matchupStat.userCharacterId === currentMatchUp.userCharacterId &&
+        matchupStat.opponentCharacterId === currentMatchUp.opponentCharacterId
+      );
+    },
+  );
+
+  const matchupStageStats =
+    headToHeadStats.opponentStats.matchupAndStageStats.filter(
+      (matchupAndStageStat) => {
+        return (
+          matchupAndStageStat.userCharacterId ===
+            currentMatchUp.userCharacterId &&
+          matchupAndStageStat.opponentCharacterId ===
+            currentMatchUp.opponentCharacterId
+        );
+      },
+    );
 
   const playerOneColor = "orange";
   const playerTwoColor = "lightblue";
-
   return (
     <Card
       sx={{
@@ -75,9 +111,9 @@ export const HeadToHeadCard = () => {
           </Grid>
           <Grid size={{ xs: 4 }} display="flex" justifyContent={"center"}>
             <HeadToHeadScore
-              winCount={headToHeadStats.overallStat.winCount}
+              winCount={headToHeadStats.opponentStats.overallStat.winCount}
               winColor={playerOneColor}
-              lossCount={headToHeadStats.overallStat.lossCount}
+              lossCount={headToHeadStats.opponentStats.overallStat.lossCount}
               lossColor={playerTwoColor}
             />
           </Grid>
@@ -90,74 +126,145 @@ export const HeadToHeadCard = () => {
             />
           </Grid>
 
-          <Grid size={{ xs: 4 }}>
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="subtitle1" color="text.primary">
+              Overall Stats
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 3 }}>
             <GamesPlayedPaperDisplay
-              stat={headToHeadStats.overallStat}
+              stat={headToHeadStats.opponentStats.overallStat}
               playerOneColor={playerOneColor}
               playerTwoColor={playerTwoColor}
             />
           </Grid>
-          <Grid size={{ xs: 4 }}>
+          <Grid size={{ xs: 3 }}>
             <PaperDisplay
               title="Win Rate"
-              value={getPercentageString(headToHeadStats.overallStat.winRate)}
+              value={getPercentageString(
+                headToHeadStats.opponentStats.overallStat.winRate,
+              )}
             />
           </Grid>
-          <Grid size={{ xs: 4 }}>
-            {/* <PaperDisplay title="First Seen" value={firstMatchDate()} /> */}
-            <PaperDisplay title="First Seen" value={'TODO'} />
+          <Grid size={{ xs: 3 }}>
+            <PaperDisplay
+              title="First Match"
+              value={getTimeString(
+                headToHeadStats.opponentStats.firstMatchDate,
+              )}
+            />
+          </Grid>
+          <Grid size={{ xs: 3 }}>
+            <PaperDisplay
+              title="Last Match"
+              value={getTimeString(headToHeadStats.opponentStats.lastMatchDate)}
+            />
           </Grid>
 
+          {headToHeadStats.userCharacterUsages && (
+            <Grid size={{ xs: 6 }}>
+              <CharacterUsagePaper
+                playerConnectCode={user.connectCode}
+                characterUsageStats={headToHeadStats.userCharacterUsages}
+                color={playerOneColor}
+              />
+            </Grid>
+          )}
+          {headToHeadStats.opponentCharacterUsages && (
+            <Grid size={{ xs: 6 }}>
+              <CharacterUsagePaper
+                playerConnectCode={opponent.connectCode}
+                characterUsageStats={headToHeadStats.opponentCharacterUsages}
+                color={playerTwoColor}
+              />
+            </Grid>
+          )}
+
           <Grid size={{ xs: 12 }}>
-            <Typography variant="h6" color="text.primary">
+            <Typography variant="subtitle1" color="text.primary">
               Matchup Stats
             </Typography>
           </Grid>
-          <Grid size={{ xs: 4 }}>
-            <GamesPlayedPaperDisplay
-              stat={matchupHeadToHeadStat}
-              playerOneColor={playerOneColor}
-              playerTwoColor={playerTwoColor}
-            />
-          </Grid>
-          <Grid size={{ xs: 4 }}>
-            <PaperDisplay
-              title="Win Rate"
-              value={getPercentageString(matchupHeadToHeadStat.winRate)}
-            />
-          </Grid>
-          <Grid size={{ xs: 4 }}>
-            <Paper sx={{ p: 2, bgcolor: "rgba(99, 102, 241, 0.05)" }}>
-              <Typography variant="body2" color="text.secondary">
-                Best Stage
-              </Typography>
-              <Typography variant="h6" color="text.primary">
-                TODO
-              </Typography>
-            </Paper>
-          </Grid>
 
-          <Grid size={{ xs: 6 }}>
-            <CharacterUsagePaper
-              playerConnectCode={statInfo.userInfo.connectCode}
-              characterUsageStats={statInfo.userInfo.characterUsage}
-              color={playerOneColor}
-            />
+          <Grid size={{ xs: 12 }}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 3 }}>
+                {userCharacterDisplay && (
+                  <MatchupSelect
+                    label={`${user.connectCode} Character`}
+                    availableCharacterIds={[
+                      ...new Set(
+                        headToHeadStats.opponentStats.matchupStats
+                          .sort((a, b) => b.totalCount - a.totalCount)
+                          .map((matchupStat) => matchupStat.userCharacterId),
+                      ),
+                    ]}
+                    value={userCharacterDisplay}
+                    onChange={(characterId) =>
+                      setUserCharacterDisplay(characterId)
+                    }
+                  />
+                )}
+              </Grid>
+              <Grid size={{ xs: 3 }}>
+                {opponentCharacterDisplay && (
+                  <MatchupSelect
+                    label={`${opponent.connectCode} Character`}
+                    availableCharacterIds={[
+                      ...new Set(
+                        headToHeadStats.opponentStats.matchupStats
+                          .sort((a, b) => b.totalCount - a.totalCount)
+                          .map(
+                            (matchupStat) => matchupStat.opponentCharacterId,
+                          ),
+                      ),
+                    ]}
+                    value={opponentCharacterDisplay}
+                    onChange={(characterId) =>
+                      setOpponentCharacterDisplay(characterId)
+                    }
+                  />
+                )}
+              </Grid>
+            </Grid>
           </Grid>
-          <Grid size={{ xs: 6 }}>
-            <CharacterUsagePaper
-              playerConnectCode={statInfo.opponentInfo.connectCode}
-              characterUsageStats={statInfo.opponentInfo.characterUsage}
-              color={playerTwoColor}
-            />
-          </Grid>
+          {matchupStat && (
+            <>
+              <Grid size={{ xs: 4 }}>
+                <GamesPlayedPaperDisplay
+                  stat={matchupStat}
+                  playerOneColor={playerOneColor}
+                  playerTwoColor={playerTwoColor}
+                />
+              </Grid>
+              <Grid size={{ xs: 4 }}>
+                <PaperDisplay
+                  title="Win Rate"
+                  value={getPercentageString(matchupStat.winRate)}
+                />
+              </Grid>
+              <Grid size={{ xs: 4 }}>
+                <PaperDisplay
+                  title="Matchup Play Rate"
+                  value={getPercentageString(
+                    (matchupStat.totalCount /
+                      headToHeadStats.opponentStats.overallStat.totalCount) *
+                      100,
+                  )}
+                />
+              </Grid>
+              {/* <Grid size={{ xs: 3 }}>
+                <PaperDisplay title="asdasdasd" value={"asd"} />
+              </Grid> */}
+            </>
+          )}
 
           <Grid size={{ xs: 12 }}>
             <Box display="flex" flexDirection="column">
-              <Typography variant="h6" color="text.primary" ml={2}>
-                Stage Statistics
-              </Typography>
-              <StageStatisticsTable />
+              <StatsTable
+                overallStageStats={headToHeadStats.opponentStats.stageStats}
+                matchupStageStats={matchupStageStats}
+              />
             </Box>
           </Grid>
         </Grid>

@@ -10,6 +10,8 @@ import {
   MatchupStat,
   StageStat,
   CurrentReplayInfo,
+  CharacterUsageStat,
+  OpponentStats,
 } from "@/types";
 
 export const getMostRecentMatches = (
@@ -94,6 +96,8 @@ const getStatsFromReplay = (
       stageStats: [],
       matchupStats: [],
       matchupAndStageStats: [],
+      firstMatchDate: replay.date,
+      lastMatchDate: replay.date,
     };
 
     fullStats.opponentSpecificStats.push(opponentStat);
@@ -114,6 +118,8 @@ const getStatsFromReplay = (
     stageId,
     isWin,
   );
+
+  updateFirstAndLastMatchDate(opponentStat, replay);
 };
 
 const incrementStat = (stat: Stat, isWin: boolean) => {
@@ -226,6 +232,23 @@ const updateMatchupAndStageStat = (
   });
 };
 
+const updateFirstAndLastMatchDate = (
+  opponentStat: OpponentStats,
+  replay: Replay,
+) => {
+  const firstMatchDateNum = new Date(opponentStat.firstMatchDate).getTime();
+  const lastMatchDateNum = new Date(opponentStat.lastMatchDate).getTime();
+
+  const replayDateNum = new Date(replay.date).getTime();
+  if (replayDateNum < firstMatchDateNum) {
+    opponentStat.firstMatchDate = replay.date;
+  }
+
+  if (replayDateNum > lastMatchDateNum) {
+    opponentStat.lastMatchDate = replay.date;
+  }
+};
+
 export const updateStatsWithReplay = async (
   fullStats: FullStats,
   userConnectCode: string,
@@ -259,35 +282,90 @@ export const getCurrentHeadToHeadStats = (
   });
   if (!opponentStats) return null;
 
-  const stageId = currentReplayInfo.stageId;
+  const userCharacterUsages: CharacterUsageStat[] = [];
+  const opponentCharacterUsages: CharacterUsageStat[] = [];
+  opponentStats.matchupStats.forEach((matchupStat) => {
+    const userCharacterId = matchupStat.userCharacterId;
+    const opponentCharacterId = matchupStat.opponentCharacterId;
+    const userPlayCount = opponentStats.matchupStats
+      .filter((matchupStat) => {
+        return matchupStat.userCharacterId === userCharacterId;
+      })
+      .map((matchupStat) => matchupStat.totalCount)
+      .reduce((acc, totalCount) => {
+        return acc + totalCount;
+      });
 
-  const opponentStageStat = opponentStats.stageStats.find((stageStat) => {
-    return stageStat.stageId === stageId;
+    const opponentPlayCount = opponentStats.matchupStats
+      .filter((matchupStat) => {
+        return matchupStat.opponentCharacterId === opponentCharacterId;
+      })
+      .map((matchupStat) => matchupStat.totalCount)
+      .reduce((acc, totalCount) => {
+        return acc + totalCount;
+      });
+
+    const userCharacterUsageStat = userCharacterUsages.find((usageStat) => {
+      return usageStat.characterId === userCharacterId;
+    });
+    if (userCharacterUsageStat) {
+      userCharacterUsageStat.playCount = userPlayCount;
+      userCharacterUsageStat.playRate =
+        (userPlayCount / opponentStats.overallStat.totalCount) * 100;
+    } else {
+      userCharacterUsages.push({
+        characterId: userCharacterId,
+        playCount: userPlayCount,
+        playRate: (userPlayCount / opponentStats.overallStat.totalCount) * 100,
+      });
+    }
+    // update opponentCharacterUsage
+    const opponentCharacterUsageStat = opponentCharacterUsages.find(
+      (usageStat) => {
+        return usageStat.characterId === opponentCharacterId;
+      },
+    );
+    if (opponentCharacterUsageStat) {
+      opponentCharacterUsageStat.playCount = opponentPlayCount;
+      opponentCharacterUsageStat.playRate +=
+        (opponentPlayCount / opponentStats.overallStat.totalCount) * 100;
+    } else {
+      opponentCharacterUsages.push({
+        characterId: opponentCharacterId,
+        playCount: opponentPlayCount,
+        playRate:
+          (opponentPlayCount / opponentStats.overallStat.totalCount) * 100,
+      });
+    }
   });
 
-  const opponentMatchupStats = opponentStats.matchupStats.find(
-    (matchupStat) => {
-      return (
-        matchupStat.userCharacterId === player.characterId &&
-        matchupStat.opponentCharacterId === opponent.characterId
-      );
-    },
-  );
-
-  const opponentMatchupStageStats = opponentStats.matchupAndStageStats.find(
-    (matchupAndStageStat) => {
-      return (
-        matchupAndStageStat.userCharacterId === player.characterId &&
-        matchupAndStageStat.opponentCharacterId === opponent.characterId &&
-        matchupAndStageStat.stageId === stageId
-      );
-    },
-  );
-
   return {
-    overallStat: opponentStats.overallStat,
-    stageStat: opponentStageStat,
-    matchupStat: opponentMatchupStats,
-    matchupAndStageStat: opponentMatchupStageStats,
+    opponentStats,
+    userCharacterUsages,
+    opponentCharacterUsages,
   };
 };
+
+// TODO: use to filter for selected matchup/stage/matchupstage stats
+// const stageId = currentReplayInfo.stageId.toString();
+
+// const opponentStageStat = opponentStats.stageStats.find((stageStat) => {
+//   return stageStat.stageId === stageId;
+// });
+
+// const opponentMatchupStats = opponentStats.matchupStats.find((matchupStat) => {
+//   return (
+//     matchupStat.userCharacterId === player.characterId &&
+//     matchupStat.opponentCharacterId === opponent.characterId
+//   );
+// });
+
+// const opponentMatchupStageStats = opponentStats.matchupAndStageStats.find(
+//   (matchupAndStageStat) => {
+//     return (
+//       matchupAndStageStat.userCharacterId === player.characterId &&
+//       matchupAndStageStat.opponentCharacterId === opponent.characterId &&
+//       matchupAndStageStat.stageId === stageId
+//     );
+//   },
+// );

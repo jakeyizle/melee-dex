@@ -146,7 +146,11 @@ export const setupReplayStoreIpcListeners = () => {
       : await attemptGetUser();
     if (!userConnectCode || !newStatInfo) return;
     const stats = await updateStatsWithReplay(newStatInfo, userConnectCode);
+    const headToHeadStats =
+      stats && currentReplayInfo
+        ? getCurrentHeadToHeadStats(stats, currentReplayInfo, userConnectCode)
+        : null;
     console.log("update-stats", stats);
-    setState({ newStatInfo: stats, userConnectCode });
+    setState({ newStatInfo: stats, userConnectCode, headToHeadStats });
   });
 };

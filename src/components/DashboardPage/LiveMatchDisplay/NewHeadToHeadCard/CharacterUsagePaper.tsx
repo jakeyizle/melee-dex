@@ -36,6 +36,9 @@ export const CharacterUsagePaper = ({
   characterUsageStats,
   color,
 }: CharacterUsagePaperProps) => {
+  characterUsageStats = characterUsageStats
+    .sort((a, b) => b.playRate - a.playRate)
+    .slice(0, 3);
   const characterAvatars = characterUsageStats.map((stat) => {
     return (
       <Grid size={{ xs: 4 }} key={stat.characterId}>
