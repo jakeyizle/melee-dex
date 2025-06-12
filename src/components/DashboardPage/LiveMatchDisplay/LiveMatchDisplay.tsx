@@ -2,6 +2,7 @@ import { Container, Grid, Stack } from "@mui/material";
 import { CurrentMatchCard } from "./CurrentMatchCard";
 import { HeadToHeadCard } from "./HeadToHeadCard";
 import { UserStatsCard } from "./UserStatsCard";
+import { UserStatsCard as NewUserStatsCard } from "./NewUserStatsCard/UserStatsCard";
 import { RecentMatchesCard } from "./RecentMatchesCard";
 import { HeadToHeadCard as NewHeadToHeadCard } from "./NewHeadToHeadCard";
 export const LiveMatchDisplay = () => {
@@ -14,7 +15,8 @@ export const LiveMatchDisplay = () => {
         </Grid>
         <Grid size={{ sm: 12, lg: 6 }}>
           <Stack spacing={4}>
-            <UserStatsCard />
+            {/* <UserStatsCard /> */}
+            <NewUserStatsCard />
             <RecentMatchesCard />
           </Stack>
         </Grid>

@@ -9,9 +9,9 @@ import {
 import { useReplayStore } from "@/replayStore";
 import { PlayerAvatar } from "./PlayerAvatar";
 import { HeadToHeadScore } from "./HeadToHeadScore";
-import { PaperDisplay } from "./PaperDisplay";
+import { PaperDisplay } from "../PaperDisplay";
 import { getTimeString } from "@/utils/displayUtils";
-import { GamesPlayedPaperDisplay } from "./GamesPlayedPaperDisplay";
+import { GamesPlayedPaperDisplay } from "../GamesPlayedPaperDisplay";
 import { CharacterUsagePaper } from "./CharacterUsagePaper";
 import { StatsTable } from "./StatsTable";
 import { useEffect, useState } from "react";
