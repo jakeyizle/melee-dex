@@ -99,9 +99,8 @@ export const createInvisWindow = () => {
 export const createMainWindow = async () => {
   mainWindow = new BrowserWindow({
     title: "MeleeDex",
-    height: 0,
-    width: 0,
     icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
+    show: false,
     webPreferences: {
       preload: PRELOAD,
     },
@@ -116,6 +115,10 @@ export const createMainWindow = async () => {
   } else {
     mainWindow.loadFile(INDEX_HTML);
   }
+
+  mainWindow.on("ready-to-show", () => {
+    mainWindow?.show();
+  });
 
   // Make all links open with the browser, not with the application
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

@@ -84,14 +84,14 @@ export const UserStatsCard = () => {
         }
       />
       <CardContent>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 4 }}>
+        <Grid container spacing={1}>
+          <Grid size={{ xs: 5 }}>
             <PaperDisplay
               title="Total Games Played"
               value={`${overallStat.totalCount} (${overallStat.winCount} - ${overallStat.lossCount})`}
             />
           </Grid>
-          <Grid size={{ xs: 4 }}>
+          <Grid size={{ xs: 3 }}>
             <PaperDisplay
               title="Win Rate"
               value={getPercentageString(overallStat.winRate)}

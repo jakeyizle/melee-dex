@@ -17,7 +17,7 @@ export const LiveMatchDisplay = () => {
           <Stack spacing={4}>
             {/* <UserStatsCard /> */}
             <NewUserStatsCard />
-            <RecentMatchesCard />
+            {/* <RecentMatchesCard /> */}
           </Stack>
         </Grid>
         {/* <Grid size={{ sm: 12, lg: 6 }}>

@@ -71,7 +71,7 @@ export const HeadToHeadCard = () => {
     },
   );
 
-  const matchupStageStats =
+  const opponentMatchupStageStats =
     headToHeadStats.opponentStats.matchupAndStageStats.filter(
       (matchupAndStageStat) => {
         return (
@@ -83,6 +83,16 @@ export const HeadToHeadCard = () => {
       },
     );
 
+  const overallMatchupStageStats =
+    newStatInfo.stats.matchupAndStageStats.filter((matchupAndStageStat) => {
+      return (
+        matchupAndStageStat.userCharacterId ===
+          currentMatchUp.userCharacterId &&
+        matchupAndStageStat.opponentCharacterId ===
+          currentMatchUp.opponentCharacterId
+      );
+    });
+
   const playerOneColor = "orange";
   const playerTwoColor = "lightblue";
   return (
@@ -93,7 +103,7 @@ export const HeadToHeadCard = () => {
     >
       <CardHeader
         title={
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
             <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               Head to Head
             </Typography>
@@ -101,7 +111,7 @@ export const HeadToHeadCard = () => {
         }
       />
       <CardContent>
-        <Grid container spacing={2}>
+        <Grid container spacing={1}>
           <Grid size={{ xs: 4 }} display="flex" justifyContent={"start"}>
             <PlayerAvatar
               connectCode={user.connectCode}
@@ -126,11 +136,6 @@ export const HeadToHeadCard = () => {
             />
           </Grid>
 
-          <Grid size={{ xs: 12 }}>
-            <Typography variant="subtitle1" color="text.primary">
-              Overall Stats
-            </Typography>
-          </Grid>
           <Grid size={{ xs: 3 }}>
             <GamesPlayedPaperDisplay
               stat={headToHeadStats.opponentStats.overallStat}
@@ -262,8 +267,11 @@ export const HeadToHeadCard = () => {
           <Grid size={{ xs: 12 }}>
             <Box display="flex" flexDirection="column">
               <StatsTable
-                overallStageStats={headToHeadStats.opponentStats.stageStats}
-                matchupStageStats={matchupStageStats}
+                overallStageStats={newStatInfo.stats.stageStats}
+                overallMatchupStageStats={overallMatchupStageStats}
+                opponentStageStats={headToHeadStats.opponentStats.stageStats}
+                opponentMatchupStageStats={opponentMatchupStageStats}
+                opponentConnectCode={opponent.connectCode}
               />
             </Box>
           </Grid>
