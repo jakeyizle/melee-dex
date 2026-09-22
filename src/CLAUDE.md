@@ -1,16 +1,21 @@
-# src/ — renderers
+# src/ — renderer
 
 Read the root `CLAUDE.md` first for commands and the overall data flow.
 
-Two entry points build from this directory:
+One entry point builds from this directory:
 
 - `main.tsx` → `App.tsx` (`HashRouter`; routes `/` → DashboardPage and `/settings` → SettingsPage)
   → `Layout.tsx` (MUI dark theme, AppBar, update Snackbar). `HashRouter` is required because the
   packaged app loads over `file://`.
-- `workerRenderer.ts` — the hidden parsing worker. It is a thin IPC loop; the actual `.slp` →
-  `Replay` mapping lives in `replayParsing.ts` (`parseGameToReplay`, `tryGetWinner`,
-  `isReplayValid`), which imports no Electron and is therefore testable in Node.
-  See `electron/CLAUDE.md` for how the worker is spawned.
+
+`replayParsing.ts` holds the `.slp` → `Replay` mapping (`parseGameToReplay`, `tryGetWinner`,
+`isReplayValid`). It imports no Electron and is therefore testable in Node — and it is **also
+bundled into the `utilityProcess` parser worker**, so its `db/replays` and `slippi-js` imports
+must stay `import type`, or localforage follows it into a process with no IndexedDB.
+
+This renderer is the **only writer to IndexedDB**. Workers parse, main routes, and
+`replayStore.ts` commits each batch on `insert-parsed-replays` and acks it with
+`replays-inserted`. See `electron/CLAUDE.md` for the worker pool.
 
 ## Conventions
 
@@ -48,16 +53,38 @@ callbacks a block body.
 
 ## Stats
 
-All aggregation lives in `src/utils/statUtils.ts`:
+All aggregation lives in `src/utils/statUtils.ts`. Everything funnels through one core:
 
-- `buildStats(replays, code)` — pure fold over any collection of replays.
-- `applyReplayToStats(stats, replay, code)` — pure, folds one replay into existing stats in place.
-- `getStats(code)` — the DB adapter for the batch path, run once on `end-loading-replays`. It
-  **streams** via `executeCallbackOnEachReplay` rather than calling `buildStats`, so a large replay
-  library is never materialized into an array. Keep it that way.
-- `updateStatsWithReplay(stats, code)` — the DB adapter for the live path; reads the latest replay
-  and delegates to `applyReplayToStats`.
-- `getCurrentHeadToHeadStats(...)` — pure; derives the single-opponent view.
+- `getStatsFromReplay(replay, code, fullStats)` — **the shared core.** Folds a single replay into
+  a `FullStats` by mutating it in place, updating the overall / stage / matchup / matchup-and-stage
+  buckets and the per-opponent record together. Every path below ends up here, so this is what you
+  edit to change how a replay is counted. It returns early when the replay has no user/opponent
+  pair, which is how replays the user did not play in are skipped.
+
+The batch path, run once on `end-loading-replays`:
+
+- `getStats(code)` — the DB adapter. **Streams** via `executeCallbackOnEachReplay` straight into
+  `getStatsFromReplay`, so a large replay library is never materialized into an array. It
+  deliberately does **not** call `buildStats`. Keep it that way.
+- `buildStats(replays, code)` — pure fold over any iterable of replays. **Used only by the unit
+  tests**, which need to build a `FullStats` synchronously without IndexedDB; production always
+  goes through `getStats`.
+
+The live path, run on `update-stats` when a game finishes:
+
+- `updateStatsWithReplay(stats, code)` — the DB adapter; reads the latest replay and delegates.
+- `applyReplayToStats(stats, replay, code)` — guards against a null replay and against replays the
+  user is not in, then delegates to the core. Mutates `stats` in place and returns it (returns
+  `undefined` when it declines).
+
+Derived, pure:
+
+- `getCurrentHeadToHeadStats(stats, currentReplayInfo, code)` — narrows a `FullStats` to the
+  single-opponent view the dashboard renders.
+- `getMostRecentMatches(replays, n)` — only consumer is `RecentMatchesCardContent.tsx`, which is
+  one of the legacy cards (see Gotchas), so it is effectively dead in production.
+- `createEmptyFullStats()` — the zero value `getStats` and `buildStats` start from. The live
+  path never calls it; it folds into the `FullStats` the store already holds.
 
 The batch and live paths must stay in agreement; `test/unit/statUtils.test.ts` asserts that
 applying a replay incrementally equals rebuilding from scratch with it appended.
@@ -77,7 +104,8 @@ plus `opponentSpecificStats: OpponentStats[]`. Shared types are in `src/types.d.
   Captain Falcon (id 0)**, so an unknown character id renders as Falcon instead of erroring.
 - `tryGetWinner` in `replayParsing.ts` inverts the player index on purpose — more stocks *lost*
   means the *other* player won. It reads like an off-by-one bug; it is not.
-- `workerRenderer.ts` swallows parse errors in bare `try/catch`, same as the main process.
+- `electron/worker/replayParser.ts` swallows parse errors in bare `try/catch`, same as the main
+  process; anything that throws is filed as a bad replay.
 - `src/type/electron-updater.d.ts` is unused.
 - `replayStore.ts` still has two leftover `console.log` calls in its IPC handlers.
 

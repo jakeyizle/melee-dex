@@ -193,7 +193,7 @@ describe("isReplayValid", () => {
   // BUG (see src/CLAUDE.md "Known behavior quirks" #8): a one-player replay makes
   // isReplayValid throw rather than return false, because it keeps reading
   // players[1] after the length check has already failed. The net effect in
-  // production is the same — workerRenderer's try/catch files the replay as bad —
+  // production is the same — the parser worker's try/catch files the replay as bad —
   // so this is locked in rather than fixed.
   it("throws, rather than returning false, for a replay with one player", () => {
     const onePlayer = makeReplay({ players: [makePlayer("USER#001", "0")] });

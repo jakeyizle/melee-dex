@@ -1,5 +1,5 @@
 import { rmSync } from 'node:fs'
-import path, {resolve as pathResolve} from 'node:path'
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
@@ -14,14 +14,6 @@ export default defineConfig(({ command }) => {
   const sourcemap = isServe || !!process.env.VSCODE_DEBUG
 
   return {
-    build: {
-      rollupOptions: {
-        input: {
-          index: pathResolve(__dirname, 'index.html'),
-          workerRenderer: pathResolve(__dirname, 'workerRenderer.html'),
-        }
-      }
-    },
     resolve: {
       alias: {
         '@': path.join(__dirname, 'src')        
@@ -31,8 +23,12 @@ export default defineConfig(({ command }) => {
       react(),
       electron({
         main: {
-          // Shortcut of `build.lib.entry`
-          entry: 'electron/main/index.ts',
+          // Shortcut of `build.lib.entry`. `replayParser` is the utilityProcess
+          // parser worker: a Node entry, not a renderer, so it builds alongside main.
+          entry: {
+            index: 'electron/main/index.ts',
+            replayParser: 'electron/worker/replayParser.ts',
+          },
           onstart(args) {
             if (process.env.VSCODE_DEBUG) {
               console.log(/* For `.vscode/.debug.script.mjs` */'[startup] Electron App')

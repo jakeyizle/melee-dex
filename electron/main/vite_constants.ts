@@ -10,8 +10,9 @@ export const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 export const INDEX_HTML = path.join(RENDERER_DIST, "index.html");
-export const WORKER_URL = `${VITE_DEV_SERVER_URL}/workerRenderer.html`;
-export const WORKER_HTML = path.join(RENDERER_DIST, "workerRenderer.html");
+// The parser worker is a Node entry built alongside the main process, not an HTML
+// page, so the same path works in dev and packaged.
+export const WORKER_ENTRY = path.join(__dirname, "replayParser.js");
 export const PRELOAD = path.join(__dirname, "../preload/index.mjs");
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL

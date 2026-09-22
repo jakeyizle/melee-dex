@@ -1,5 +1,5 @@
-import { SlippiGame } from "@slippi/slippi-js";
-import { ReplayPlayer, Replay } from "./db/replays";
+import type { SlippiGame } from "@slippi/slippi-js";
+import type { ReplayPlayer, Replay } from "./db/replays";
 
 export type ReplayFileInfo = { name: string; path: string };
 

@@ -61,14 +61,9 @@ ipcMain.handle(
   },
 );
 
-ipcMain.handle("request-replays-to-load", (event) => {
-  const worker = event.sender;
-  const replays = replayLoadManager.getNextReplaysToLoad(worker);
-  return replays;
-});
-
-ipcMain.handle("replay-loaded", (event, args: { batch: number }) => {
-  const { batch } = args;
-
-  replayLoadManager.updateReplayLoadProgress(batch);
-});
+ipcMain.handle(
+  "replays-inserted",
+  (_event, args: { token: number; count: number }) => {
+    replayLoadManager.onReplaysInserted(args);
+  },
+);

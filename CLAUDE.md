@@ -31,9 +31,9 @@ Tests live in two suites:
 - `test/*.spec.ts` — Playwright-Electron specs against the built app, run by `vitest.config.ts`.
   `e2e.spec.ts` is the startup smoke test. `import.spec.ts` drives a real import: it stubs only
   the native folder picker (via `electronApp.evaluate`), then clicks through Settings so the
-  `select-directory` IPC handler, the file walk, the worker window, `SlippiGame` parsing and
-  IndexedDB all run for real, and asserts the counts the dashboard renders. Each spec writes a
-  screenshot into `test/screenshots/`. Skipped on Linux.
+  `select-directory` IPC handler, the file walk, the `utilityProcess` parser workers,
+  `SlippiGame` parsing and IndexedDB all run for real, and asserts the counts the dashboard
+  renders. Each spec writes a screenshot into `test/screenshots/`. Skipped on Linux.
 
   `fileParallelism` is off for this config: the app takes a single-instance lock, so two specs
   launching Electron at once would make the second quit on startup. `import.spec.ts` also passes
@@ -46,20 +46,25 @@ quirks" in `src/CLAUDE.md` before changing one.
 ## Architecture
 
 ```
-electron/main  ──fs.watch(replay dir)──▶ spawns invisible renderer windows
-                                          (src/workerRenderer.ts)
+electron/main  ──fs.watch(replay dir)──▶ forks utilityProcess workers
+                                          (electron/worker/replayParser.ts)
                                                 │ parse .slp with SlippiGame
+                                                │ Replay objects back over IPC
                                                 ▼
-                                         IndexedDB (localforage)
-                                                │
-main renderer (src/replayStore.ts, zustand) ────┘
-   folds every replay into a FullStats object via src/utils/statUtils.ts,
-   then mutates it in place for each new live game.
+                                         electron/main (routes batches)
+                                                │ insert-parsed-replays
+                                                ▼
+main renderer (src/replayStore.ts, zustand) ──▶ IndexedDB (localforage)
+   acks each batch, then folds every replay into a FullStats object via
+   src/utils/statUtils.ts, mutating it in place for each new live game.
 ```
 
-Parsing parallelism uses **hidden Electron renderer windows, not worker threads** — that is the one
-piece of this design that cannot be guessed. The reason is that parsed replays are written straight
-to IndexedDB, which only exists in a renderer.
+Parsing parallelism uses **`utilityProcess` workers** — Node processes with no Chromium, which
+means **no IndexedDB**. That is why the renderer, not the worker, does the writing: the main
+renderer is the single writer, and its ack for each batch is also the backpressure that releases
+the worker's next one. Worker count is capped by memory, not cores — see `electron/CLAUDE.md`.
+
+This was previously a pool of invisible renderer windows that wrote to IndexedDB themselves.
 
 ## Slippi / Melee glossary
 

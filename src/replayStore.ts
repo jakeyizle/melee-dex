@@ -3,6 +3,8 @@ import {
   attemptGetUser,
   determineUserBasedOnLiveGame,
   getMostCommonUser,
+  insertBadReplay,
+  insertReplay,
   Replay,
   selectBadReplayCount,
   selectReplayCount,
@@ -106,6 +108,37 @@ export const setupReplayStoreIpcListeners = () => {
       totalReplaysToLoad: args.totalReplaysToLoad,
       replaysPerSecond: args.replaysPerSecond,
     });
+  });
+
+  // Parsing happens in utilityProcess workers, but this renderer is the only
+  // process with IndexedDB, so every parsed batch lands here. The chain keeps
+  // writes serialized across workers, and the ack tells main that the worker
+  // which produced this batch is free for the next one.
+  let pendingWrites: Promise<void> = Promise.resolve();
+
+  window.ipcRenderer.on("insert-parsed-replays", (_event, args) => {
+    const { token, replays, badReplays, count } = args as {
+      token: number;
+      count: number;
+      replays: Replay[];
+      badReplays: { name: string; path: string }[];
+    };
+
+    pendingWrites = pendingWrites
+      .then(async () => {
+        for (const replay of replays) {
+          await insertReplay(replay);
+        }
+        for (const badReplay of badReplays) {
+          await insertBadReplay(badReplay);
+        }
+      })
+      .catch(() => {
+        // A failed write must not wedge the pool - still ack so it moves on.
+      })
+      .then(() => {
+        window.ipcRenderer.invoke("replays-inserted", { token, count });
+      });
   });
 
   window.ipcRenderer.on("live-replay-loaded", (_event, args) => {

@@ -10,8 +10,8 @@ import { beforeAll, afterAll, describe, expect, test } from "vitest";
 
 /**
  * End-to-end cover for the replay import path: the settings UI, the
- * select-directory IPC handler, the file walk, the hidden worker window that
- * parses .slp files, IndexedDB, and the counts the dashboard finally renders.
+ * select-directory IPC handler, the file walk, the utilityProcess workers that
+ * parse .slp files, IndexedDB, and the counts the dashboard finally renders.
  *
  * The only thing faked is the native directory picker, which cannot be driven
  * from Playwright. Everything either side of it is the real application.
@@ -81,7 +81,7 @@ suite("importing a replay directory", () => {
 
     await page.getByRole("button", { name: "Save Settings" }).click();
 
-    // Importing spawns a worker window that parses every .slp in testdata,
+    // Importing forks parser workers that parse every .slp in testdata,
     // one of which is 9MB, so this is deliberately generous.
     await expect
       .poll(() => page.getByText("Listening for Games").isVisible(), {

@@ -1,14 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
-import { WebContents } from "electron";
-import {
-  createInvisWindow,
-  getBatchSize,
-  getNumberOfWorkers,
-  getReplayFiles,
-  mainWindow,
-  ReplayFile,
-} from "./utils";
+import { getNumberOfWorkers, getReplayFiles, mainWindow } from "./utils";
+import { ParserWorker } from "./parserWorker";
+import { PARSE_BATCH_SIZE } from "../worker/protocol";
+import type { ParseResults } from "../worker/protocol";
+import type { ReplayFileInfo } from "../../src/replayParsing";
 import { require } from "./vite_constants";
 const { SlippiGame } = require("@slippi/slippi-js");
 
@@ -18,9 +14,13 @@ export class ReplayLoadManager {
   private isLoadingReplayDirectory = false;
   private totalReplaysToLoad = 0;
   private currentReplaysLoaded = 0;
-  private replayFiles: ReplayFile[] = [];
-  private workerWebContents: WebContents[] = [];
-  private batchSize = 0;
+  private replayFiles: ReplayFileInfo[] = [];
+  /** Files requeued after a worker crash, re-parsed one at a time to isolate the culprit. */
+  private isolatedFiles: ReplayFileInfo[] = [];
+  private workers: ParserWorker[] = [];
+  /** Batches handed to the renderer, keyed by token, awaiting an insert ack. */
+  private awaitingInsert = new Map<number, ParserWorker | null>();
+  private nextInsertToken = 1;
   private startTimestamp = 0;
   private replayDirectory = "";
   private watcher: fs.FSWatcher | null = null;
@@ -49,74 +49,144 @@ export class ReplayLoadManager {
     );
 
     if (newReplays.length === 0) {
-      this.endLoadingReplays();
+      this.finishLoading();
       return;
     }
     this.stopListeningForReplayFile();
 
     this.totalReplaysToLoad = newReplays.length;
     this.currentReplaysLoaded = 0;
-    this.replayFiles = newReplays;
-    const numberOfWorkers = getNumberOfWorkers(this.totalReplaysToLoad);
-    this.batchSize = getBatchSize(this.totalReplaysToLoad, numberOfWorkers);
+    // Normalized to plain objects: these get structured-cloned to the workers.
+    this.replayFiles = newReplays.map(({ name, path }) => ({ name, path }));
+    this.isolatedFiles = [];
     this.startTimestamp = Date.now();
 
-    if (this.workerWebContents.length > 0) {
-      this.workerWebContents.forEach((webContents) => webContents.close());
-      this.workerWebContents = [];
-    }
+    // Workers are Node processes rather than renderers, so there is no need to
+    // stagger the forks the way the old invisible-window pool did.
+    const numberOfWorkers = getNumberOfWorkers(this.totalReplaysToLoad);
     for (let i = 0; i < numberOfWorkers; i++) {
-      this.workerWebContents.push(createInvisWindow());
-      // add a delay to smooth this out
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      this.spawnWorker();
     }
   }
 
-  public getNextReplaysToLoad(webContents: WebContents) {
-    if (this.replayFiles.length === 0) {
-      this.endLoadingReplays(webContents);
-      return;
-    }
-    const replayFiles = this.replayFiles.splice(0, this.batchSize);
-    return replayFiles;
-  }
-
-  public async beginLoadingReplayFile(file: { path: string; name: string }) {
+  public async beginLoadingReplayFile(file: ReplayFileInfo) {
     if (this.isLoadingReplays()) return;
 
     this.replayFiles = [file];
+    this.isolatedFiles = [];
     this.isLoadingSingleReplay = true;
     this.totalReplaysToLoad = 1;
     this.currentReplaysLoaded = 0;
-    this.batchSize = 1;
-    // we should have 1 worker up
     this.startTimestamp = Date.now();
-    if (this.workerWebContents.length === 0) {
-      this.workerWebContents.push(createInvisWindow());
+
+    this.spawnWorker();
+  }
+
+  /** Called from the `replays-inserted` handler once the renderer has committed a batch. */
+  public onReplaysInserted({ token, count }: { token: number; count: number }) {
+    const worker = this.awaitingInsert.get(token);
+    this.awaitingInsert.delete(token);
+    this.updateReplayLoadProgress(count);
+    if (worker) this.dispatch(worker);
+  }
+
+  private spawnWorker() {
+    const worker = new ParserWorker({
+      onResults: (w, results) => this.onResults(w, results),
+      onCrash: (w, lostFiles) => this.onCrash(w, lostFiles),
+    });
+    this.workers.push(worker);
+    // ParserWorker holds the batch until the process signals it is ready.
+    this.dispatch(worker);
+    return worker;
+  }
+
+  private takeNextBatch(): ReplayFileInfo[] | null {
+    if (this.isolatedFiles.length > 0) return this.isolatedFiles.splice(0, 1);
+    if (this.replayFiles.length > 0)
+      return this.replayFiles.splice(0, PARSE_BATCH_SIZE);
+    return null;
+  }
+
+  private dispatch(worker: ParserWorker) {
+    const files = this.takeNextBatch();
+    if (!files) {
+      this.retireWorker(worker);
+      return;
+    }
+    worker.parse(files);
+  }
+
+  private onResults(worker: ParserWorker, results: ParseResults) {
+    this.sendToRenderer(worker, results.replays, results.badReplays);
+  }
+
+  private onCrash(worker: ParserWorker, lostFiles: ReplayFileInfo[]) {
+    this.workers = this.workers.filter((w) => w !== worker);
+
+    if (lostFiles.length === 1) {
+      // It was already isolated, so this one file is what killed the process.
+      // Filing it as bad is both the right answer and what stops the retry loop.
+      this.sendToRenderer(null, [], lostFiles);
     } else {
-      const webContents = this.workerWebContents[0];
-      webContents.send("start-load");
+      this.isolatedFiles.unshift(...lostFiles);
+    }
+
+    if (this.isLoadingReplays()) {
+      this.spawnWorker();
     }
   }
 
-  public endLoadingReplays(webContents?: WebContents) {
-    // keep 1 worker in background, so we can avoid spinning new workers to load 1 file at a time
-    if (this.workerWebContents.length <= 1 || !webContents) {
-      if (this.isLoadingSingleReplay) {
-        mainWindow?.webContents.send("update-stats");
-      } else {
-        mainWindow?.webContents.send("end-loading-replays");
-      }
-      this.isLoadingReplayDirectory = false;
-      this.isLoadingSingleReplay = false;
-
-      this.listenForReplayFile(this.replayDirectory);
+  /**
+   * The renderer is the only writer: workers parse, main routes, and the main
+   * window commits to IndexedDB and acks. The ack doubles as the backpressure
+   * signal that releases the next batch to `worker`.
+   */
+  private sendToRenderer(
+    worker: ParserWorker | null,
+    replays: ParseResults["replays"],
+    badReplays: ReplayFileInfo[],
+  ) {
+    const count = replays.length + badReplays.length;
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      // Nowhere to store them; keep the pool moving rather than stalling on an ack.
+      if (worker) this.dispatch(worker);
       return;
     }
-    webContents.close();
-    this.workerWebContents = this.workerWebContents.filter(
-      (c) => c !== webContents,
-    );
+    const token = this.nextInsertToken++;
+    this.awaitingInsert.set(token, worker);
+    mainWindow.webContents.send("insert-parsed-replays", {
+      token,
+      replays,
+      badReplays,
+      count,
+    });
+  }
+
+  /**
+   * Every worker is retired once the queue drains. The old design kept one alive
+   * because spawning a renderer was expensive; a utilityProcess forks in ~575ms,
+   * which is nothing on a path that runs once per finished game, and an idle
+   * worker holds on to ~200MB of parse heap for as long as the app is open.
+   */
+  private retireWorker(worker: ParserWorker) {
+    this.workers = this.workers.filter((w) => w !== worker);
+    worker.retire();
+    if (this.workers.length === 0) {
+      this.finishLoading();
+    }
+  }
+
+  private finishLoading() {
+    if (this.isLoadingSingleReplay) {
+      mainWindow?.webContents.send("update-stats");
+    } else {
+      mainWindow?.webContents.send("end-loading-replays");
+    }
+    this.isLoadingReplayDirectory = false;
+    this.isLoadingSingleReplay = false;
+
+    this.listenForReplayFile(this.replayDirectory);
   }
 
   public updateReplayLoadProgress(batch: number) {
@@ -127,9 +197,8 @@ export class ReplayLoadManager {
     this.currentReplaysLoaded += batch;
     const timeSpentLoading = Date.now() - this.startTimestamp;
     const replaysPerSecond =
-      Math.round(
-        (this.currentReplaysLoaded / (timeSpentLoading / 1000)) * 100,
-      ) / 100;
+      Math.round((this.currentReplaysLoaded / (timeSpentLoading / 1000)) * 100) /
+      100;
 
     mainWindow?.webContents.send("update-replay-load-progress", {
       totalReplaysToLoad: this.totalReplaysToLoad,
