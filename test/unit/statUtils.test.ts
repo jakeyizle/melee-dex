@@ -231,7 +231,10 @@ describe("applyReplayToStats — the live-game path agrees with the batch path",
     expect(stats.stats.overallStat.totalCount).toBe(1);
   });
 
-  it("leaves stats untouched for a replay the user is not in", () => {
+  // The store writes whatever comes back into `newStatInfo`, so declining to
+  // count a replay must still hand the existing stats back — returning nothing
+  // used to blank every card on the dashboard.
+  it("returns the stats unchanged for a replay the user is not in", () => {
     const stats = buildStats([makeMatch({ isWin: true })], USER);
     const before = structuredClone(stats);
 
@@ -243,15 +246,15 @@ describe("applyReplayToStats — the live-game path agrees with the batch path",
       USER,
     );
 
-    expect(result).toBeUndefined();
+    expect(result).toBe(stats);
     expect(stats).toEqual(before);
   });
 
-  it("leaves stats untouched when there is no replay", () => {
+  it("returns the stats unchanged when there is no replay", () => {
     const stats = buildStats([makeMatch({ isWin: true })], USER);
     const before = structuredClone(stats);
 
-    expect(applyReplayToStats(stats, null, USER)).toBeUndefined();
+    expect(applyReplayToStats(stats, null, USER)).toBe(stats);
     expect(stats).toEqual(before);
   });
 });

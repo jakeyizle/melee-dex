@@ -1,14 +1,8 @@
-import {
-  executeCallbackOnEachReplay,
-  Replay,
-  selectLatestReplay,
-} from "@/db/replays";
+import { executeCallbackOnEachReplay, Replay, selectReplay } from "@/db/replays";
 import {
   FullStats,
   Stat,
-  MatchupAndStageStat,
-  MatchupStat,
-  StageStat,
+  Stats,
   CurrentReplayInfo,
   CharacterUsageStat,
   OpponentStats,
@@ -24,20 +18,166 @@ export const getMostRecentMatches = (
   return sortedReplays.slice(0, numberOfReplays);
 };
 
+const createEmptyStat = (): Stat => ({
+  totalCount: 0,
+  winCount: 0,
+  lossCount: 0,
+  winRate: 0,
+});
+
+const createEmptyStats = (): Stats => ({
+  overallStat: createEmptyStat(),
+  stageStats: [],
+  matchupStats: [],
+  matchupAndStageStats: [],
+});
+
 export const createEmptyFullStats = (): FullStats => ({
-  stats: {
-    overallStat: {
-      totalCount: 0,
-      winCount: 0,
-      lossCount: 0,
-      winRate: 0,
-    },
-    stageStats: [],
-    matchupStats: [],
-    matchupAndStageStats: [],
-  },
+  stats: createEmptyStats(),
   opponentSpecificStats: [],
 });
+
+// ---------------------------------------------------------------------------
+// Counting a game
+// ---------------------------------------------------------------------------
+
+const countGame = (stat: Stat, isWin: boolean) => {
+  stat.totalCount += 1;
+  stat.winCount += isWin ? 1 : 0;
+  stat.lossCount += isWin ? 0 : 1;
+  stat.winRate = Math.round((stat.winCount / stat.totalCount) * 100 * 10) / 10;
+};
+
+/**
+ * Counts the game into the row `matches` picks out, adding a zeroed row first
+ * if this is the first game for it. Every bucket below is this same upsert
+ * under a different key.
+ */
+const countGameInRow = <T extends Stat>(
+  rows: T[],
+  matches: (row: T) => boolean,
+  createRow: () => T,
+  isWin: boolean,
+) => {
+  let row = rows.find(matches);
+  if (!row) {
+    row = createRow();
+    rows.push(row);
+  }
+  countGame(row, isWin);
+};
+
+/** What a single game is bucketed by. */
+type GameKeys = {
+  userCharacterId: string;
+  opponentCharacterId: string;
+  stageId: string;
+};
+
+/** Counts one game into all four buckets of a `Stats`. */
+const countGameInStats = (stats: Stats, keys: GameKeys, isWin: boolean) => {
+  const { userCharacterId, opponentCharacterId, stageId } = keys;
+
+  countGame(stats.overallStat, isWin);
+
+  countGameInRow(
+    stats.stageStats,
+    (row) => row.stageId === stageId,
+    () => ({ ...createEmptyStat(), stageId }),
+    isWin,
+  );
+
+  countGameInRow(
+    stats.matchupStats,
+    (row) =>
+      row.userCharacterId === userCharacterId &&
+      row.opponentCharacterId === opponentCharacterId,
+    () => ({ ...createEmptyStat(), userCharacterId, opponentCharacterId }),
+    isWin,
+  );
+
+  countGameInRow(
+    stats.matchupAndStageStats,
+    (row) =>
+      row.userCharacterId === userCharacterId &&
+      row.opponentCharacterId === opponentCharacterId &&
+      row.stageId === stageId,
+    () => ({
+      ...createEmptyStat(),
+      userCharacterId,
+      opponentCharacterId,
+      stageId,
+    }),
+    isWin,
+  );
+};
+
+const widenMatchDates = (opponentStats: OpponentStats, date: string) => {
+  const replayTime = new Date(date).getTime();
+  if (replayTime < new Date(opponentStats.firstMatchDate).getTime()) {
+    opponentStats.firstMatchDate = date;
+  }
+  if (replayTime > new Date(opponentStats.lastMatchDate).getTime()) {
+    opponentStats.lastMatchDate = date;
+  }
+};
+
+/**
+ * **The shared core.** Folds one replay into a `FullStats` by mutating it in
+ * place, counting it into the global buckets and into this opponent's record
+ * together. Every path in this module ends up here, so this is what to edit to
+ * change how a replay is counted.
+ *
+ * Returns `fullStats` whether or not the replay counted — a replay the user did
+ * not play in is skipped. The store writes the result straight back into
+ * `newStatInfo`, so returning nothing here would blank the dashboard.
+ *
+ * `replay.players?.` rather than `replay.players.` is deliberate: iterating the
+ * replay store also yields the latest-replay pointer's string value. See
+ * "Known behavior quirks" #4 in src/CLAUDE.md.
+ */
+export const applyReplayToStats = (
+  fullStats: FullStats,
+  replay: Replay | null,
+  userConnectCode: string,
+): FullStats => {
+  const user = replay?.players?.find((p) => p.connectCode === userConnectCode);
+  const opponent = replay?.players?.find(
+    (p) => p.connectCode !== userConnectCode,
+  );
+  if (!replay || !user || !opponent) return fullStats;
+
+  const keys: GameKeys = {
+    userCharacterId: user.characterId,
+    opponentCharacterId: opponent.characterId,
+    stageId: replay.stageId,
+  };
+  const isWin = replay.winnerConnectCode === userConnectCode;
+
+  countGameInStats(fullStats.stats, keys, isWin);
+
+  let opponentStats = fullStats.opponentSpecificStats.find(
+    (candidate) => candidate.opponentConnectCode === opponent.connectCode,
+  );
+  if (!opponentStats) {
+    opponentStats = {
+      ...createEmptyStats(),
+      opponentConnectCode: opponent.connectCode,
+      firstMatchDate: replay.date,
+      lastMatchDate: replay.date,
+    };
+    fullStats.opponentSpecificStats.push(opponentStats);
+  }
+
+  countGameInStats(opponentStats, keys, isWin);
+  widenMatchDates(opponentStats, replay.date);
+
+  return fullStats;
+};
+
+// ---------------------------------------------------------------------------
+// The ways stats get built
+// ---------------------------------------------------------------------------
 
 /**
  * Pure fold over a collection of replays. `getStats` streams out of IndexedDB
@@ -49,353 +189,95 @@ export const buildStats = (
 ): FullStats => {
   const fullStats = createEmptyFullStats();
   for (const replay of replays) {
-    getStatsFromReplay(replay, userConnectCode, fullStats);
+    applyReplayToStats(fullStats, replay, userConnectCode);
   }
   return fullStats;
-};
-
-export const getStats = async (userConnectCode: string): Promise<FullStats> => {
-  const fullStats = createEmptyFullStats();
-  await executeCallbackOnEachReplay((replay) =>
-    getStatsFromReplay(replay, userConnectCode, fullStats),
-  );
-
-  return fullStats;
-};
-
-export const getStatsFromReplay = (
-  replay: Replay,
-  userConnectCode: string,
-  fullStats: FullStats,
-) => {
-  const user = replay.players?.find((p) => p.connectCode === userConnectCode);
-  const opponent = replay.players?.find(
-    (p) => p.connectCode !== userConnectCode,
-  );
-  if (!user || !opponent) return;
-
-  const { characterId: userCharacterId } = user;
-  const { characterId: opponentCharacterId, connectCode: opponentConnectCode } =
-    opponent;
-  const stageId = replay.stageId;
-  const isWin = replay.winnerConnectCode === userConnectCode;
-
-  updateOverallStat(fullStats.stats.overallStat, isWin);
-  updateStageStat(fullStats.stats.stageStats, stageId, isWin);
-  updateMatchupStat(
-    fullStats.stats.matchupStats,
-    userCharacterId,
-    opponentCharacterId,
-    isWin,
-  );
-  updateMatchupAndStageStat(
-    fullStats.stats.matchupAndStageStats,
-    userCharacterId,
-    opponentCharacterId,
-    stageId,
-    isWin,
-  );
-
-  let opponentStat = fullStats.opponentSpecificStats.find(
-    (opponentSpecificStat) =>
-      opponentSpecificStat.opponentConnectCode === opponentConnectCode,
-  );
-
-  if (!opponentStat) {
-    opponentStat = {
-      opponentConnectCode,
-      overallStat: {
-        totalCount: 0,
-        winCount: 0,
-        lossCount: 0,
-        winRate: 0,
-      },
-      stageStats: [],
-      matchupStats: [],
-      matchupAndStageStats: [],
-      firstMatchDate: replay.date,
-      lastMatchDate: replay.date,
-    };
-
-    fullStats.opponentSpecificStats.push(opponentStat);
-  }
-
-  updateOverallStat(opponentStat.overallStat, isWin);
-  updateStageStat(opponentStat.stageStats, stageId, isWin);
-  updateMatchupStat(
-    opponentStat.matchupStats,
-    userCharacterId,
-    opponentCharacterId,
-    isWin,
-  );
-  updateMatchupAndStageStat(
-    opponentStat.matchupAndStageStats,
-    userCharacterId,
-    opponentCharacterId,
-    stageId,
-    isWin,
-  );
-
-  updateFirstAndLastMatchDate(opponentStat, replay);
-};
-
-const incrementStat = (stat: Stat, isWin: boolean) => {
-  stat.totalCount += 1;
-  stat.winCount += isWin ? 1 : 0;
-  stat.lossCount += isWin ? 0 : 1;
-  stat.winRate = Math.round((stat.winCount / stat.totalCount) * 100 * 10) / 10;
-};
-
-const updateOverallStat = (stat: Stat, isWin: boolean) => {
-  incrementStat(stat, isWin);
-};
-
-const updateStageStat = (
-  stageStats: StageStat[],
-  stageId: string,
-  isWin: boolean,
-) => {
-  const doesStageStatExist = stageStats.some(
-    (stageStat) => stageStat.stageId === stageId,
-  );
-  if (!doesStageStatExist) {
-    stageStats.push({
-      stageId,
-      totalCount: 0,
-      winCount: 0,
-      lossCount: 0,
-      winRate: 0,
-    });
-  }
-
-  stageStats.forEach((stageStat) => {
-    if (stageStat.stageId === stageId) {
-      incrementStat(stageStat, isWin);
-      return;
-    }
-  });
-};
-
-const updateMatchupStat = (
-  matchupStats: MatchupStat[],
-  userCharacterId: string,
-  opponentCharacterId: string,
-  isWin: boolean,
-) => {
-  const doesMatchupStatExist = matchupStats.some((matchupStat) => {
-    return (
-      matchupStat.userCharacterId === userCharacterId &&
-      matchupStat.opponentCharacterId === opponentCharacterId
-    );
-  });
-  if (!doesMatchupStatExist) {
-    matchupStats.push({
-      userCharacterId,
-      opponentCharacterId,
-      totalCount: 0,
-      winCount: 0,
-      lossCount: 0,
-      winRate: 0,
-    });
-  }
-  matchupStats.forEach((matchupStat) => {
-    if (
-      matchupStat.userCharacterId === userCharacterId &&
-      matchupStat.opponentCharacterId === opponentCharacterId
-    ) {
-      incrementStat(matchupStat, isWin);
-      return;
-    }
-  });
-};
-
-const updateMatchupAndStageStat = (
-  matchupAndStageStats: MatchupAndStageStat[],
-  userCharacterId: string,
-  opponentCharacterId: string,
-  stageId: string,
-  isWin: boolean,
-) => {
-  const doesMatchupAndStageStatExist = matchupAndStageStats.some(
-    (matchupAndStageStat) => {
-      return (
-        matchupAndStageStat.userCharacterId === userCharacterId &&
-        matchupAndStageStat.opponentCharacterId === opponentCharacterId &&
-        matchupAndStageStat.stageId === stageId
-      );
-    },
-  );
-
-  if (!doesMatchupAndStageStatExist) {
-    matchupAndStageStats.push({
-      userCharacterId,
-      opponentCharacterId,
-      stageId,
-      totalCount: 0,
-      winCount: 0,
-      lossCount: 0,
-      winRate: 0,
-    });
-  }
-  matchupAndStageStats.forEach((matchupAndStageStat) => {
-    if (
-      matchupAndStageStat.userCharacterId === userCharacterId &&
-      matchupAndStageStat.opponentCharacterId === opponentCharacterId &&
-      matchupAndStageStat.stageId === stageId
-    ) {
-      incrementStat(matchupAndStageStat, isWin);
-      return;
-    }
-  });
-};
-
-const updateFirstAndLastMatchDate = (
-  opponentStat: OpponentStats,
-  replay: Replay,
-) => {
-  const firstMatchDateNum = new Date(opponentStat.firstMatchDate).getTime();
-  const lastMatchDateNum = new Date(opponentStat.lastMatchDate).getTime();
-
-  const replayDateNum = new Date(replay.date).getTime();
-  if (replayDateNum < firstMatchDateNum) {
-    opponentStat.firstMatchDate = replay.date;
-  }
-
-  if (replayDateNum > lastMatchDateNum) {
-    opponentStat.lastMatchDate = replay.date;
-  }
 };
 
 /**
- * Folds a single replay into an existing FullStats, in place. This is the
- * incremental path taken for live games; `buildStats` is the batch path.
- * The two must agree — see test/unit/statUtils.test.ts.
+ * The batch path, run once on `end-loading-replays`. Streams every stored
+ * replay rather than materializing the library into an array.
  */
-export const applyReplayToStats = (
-  fullStats: FullStats,
-  replay: Replay | null,
-  userConnectCode: string,
-) => {
-  if (
-    !replay ||
-    !replay.players.some((player) => player.connectCode === userConnectCode)
-  )
-    return;
-  getStatsFromReplay(replay, userConnectCode, fullStats);
+export const getStats = async (userConnectCode: string): Promise<FullStats> => {
+  const fullStats = createEmptyFullStats();
+  await executeCallbackOnEachReplay((replay) => {
+    applyReplayToStats(fullStats, replay, userConnectCode);
+  });
   return fullStats;
 };
 
+/**
+ * The live path. Folds the replay main just finished loading into the running
+ * stats, looked up by the name main reports rather than through the
+ * latest-replay pointer: a rejected live game stores nothing, and the pointer
+ * would hand back the *previous* replay to be counted a second time.
+ */
 export const updateStatsWithReplay = async (
   fullStats: FullStats,
   userConnectCode: string,
+  replayName: string,
 ) => {
-  const replay = await selectLatestReplay();
+  const replay = await selectReplay(replayName);
   return applyReplayToStats(fullStats, replay, userConnectCode);
 };
 
+// ---------------------------------------------------------------------------
+// Derived, pure
+// ---------------------------------------------------------------------------
+
+const toCharacterUsages = (
+  playCounts: Map<string, number>,
+  gamesPlayed: number,
+): CharacterUsageStat[] =>
+  Array.from(playCounts, ([characterId, playCount]) => ({
+    characterId,
+    playCount,
+    playRate: (playCount / gamesPlayed) * 100,
+  }));
+
+/** Narrows a `FullStats` to the single-opponent view the dashboard renders. */
 export const getCurrentHeadToHeadStats = (
   fullStats: FullStats,
   currentReplayInfo: CurrentReplayInfo,
   userConnectCode: string,
 ) => {
   const player = currentReplayInfo.players.find(
-    (player) => player.connectCode === userConnectCode,
+    (candidate) => candidate.connectCode === userConnectCode,
   );
   const opponent = currentReplayInfo.players.find(
-    (player) => player.connectCode !== userConnectCode,
+    (candidate) => candidate.connectCode !== userConnectCode,
   );
-
   if (!player || !opponent) return null;
 
-  const opponentStats = fullStats.opponentSpecificStats.find((opponentStat) => {
-    return opponentStat.opponentConnectCode === opponent.connectCode;
-  });
+  const opponentStats = fullStats.opponentSpecificStats.find(
+    (candidate) => candidate.opponentConnectCode === opponent.connectCode,
+  );
   if (!opponentStats) return null;
 
-  const userCharacterUsages: CharacterUsageStat[] = [];
-  const opponentCharacterUsages: CharacterUsageStat[] = [];
-  opponentStats.matchupStats.forEach((matchupStat) => {
-    const userCharacterId = matchupStat.userCharacterId;
-    const opponentCharacterId = matchupStat.opponentCharacterId;
-    const userPlayCount = opponentStats.matchupStats
-      .filter((matchupStat) => {
-        return matchupStat.userCharacterId === userCharacterId;
-      })
-      .map((matchupStat) => matchupStat.totalCount)
-      .reduce((acc, totalCount) => {
-        return acc + totalCount;
-      });
-
-    const opponentPlayCount = opponentStats.matchupStats
-      .filter((matchupStat) => {
-        return matchupStat.opponentCharacterId === opponentCharacterId;
-      })
-      .map((matchupStat) => matchupStat.totalCount)
-      .reduce((acc, totalCount) => {
-        return acc + totalCount;
-      });
-
-    const userCharacterUsageStat = userCharacterUsages.find((usageStat) => {
-      return usageStat.characterId === userCharacterId;
-    });
-    if (userCharacterUsageStat) {
-      userCharacterUsageStat.playCount = userPlayCount;
-      userCharacterUsageStat.playRate =
-        (userPlayCount / opponentStats.overallStat.totalCount) * 100;
-    } else {
-      userCharacterUsages.push({
-        characterId: userCharacterId,
-        playCount: userPlayCount,
-        playRate: (userPlayCount / opponentStats.overallStat.totalCount) * 100,
-      });
-    }
-    // update opponentCharacterUsage
-    const opponentCharacterUsageStat = opponentCharacterUsages.find(
-      (usageStat) => {
-        return usageStat.characterId === opponentCharacterId;
-      },
+  // One pass over the matchup rows, totalling each side's characters. The
+  // previous version re-filtered and re-reduced the whole array once per row.
+  const userPlayCounts = new Map<string, number>();
+  const opponentPlayCounts = new Map<string, number>();
+  for (const matchup of opponentStats.matchupStats) {
+    userPlayCounts.set(
+      matchup.userCharacterId,
+      (userPlayCounts.get(matchup.userCharacterId) ?? 0) + matchup.totalCount,
     );
-    if (opponentCharacterUsageStat) {
-      opponentCharacterUsageStat.playCount = opponentPlayCount;
-      opponentCharacterUsageStat.playRate +=
-        (opponentPlayCount / opponentStats.overallStat.totalCount) * 100;
-    } else {
-      opponentCharacterUsages.push({
-        characterId: opponentCharacterId,
-        playCount: opponentPlayCount,
-        playRate:
-          (opponentPlayCount / opponentStats.overallStat.totalCount) * 100,
-      });
-    }
-  });
+    opponentPlayCounts.set(
+      matchup.opponentCharacterId,
+      (opponentPlayCounts.get(matchup.opponentCharacterId) ?? 0) +
+        matchup.totalCount,
+    );
+  }
 
+  const gamesPlayed = opponentStats.overallStat.totalCount;
   return {
     opponentStats,
-    userCharacterUsages,
-    opponentCharacterUsages,
+    userCharacterUsages: toCharacterUsages(userPlayCounts, gamesPlayed),
+    opponentCharacterUsages: toCharacterUsages(opponentPlayCounts, gamesPlayed),
   };
 };
 
-// TODO: use to filter for selected matchup/stage/matchupstage stats
-// const stageId = currentReplayInfo.stageId.toString();
-
-// const opponentStageStat = opponentStats.stageStats.find((stageStat) => {
-//   return stageStat.stageId === stageId;
-// });
-
-// const opponentMatchupStats = opponentStats.matchupStats.find((matchupStat) => {
-//   return (
-//     matchupStat.userCharacterId === player.characterId &&
-//     matchupStat.opponentCharacterId === opponent.characterId
-//   );
-// });
-
-// const opponentMatchupStageStats = opponentStats.matchupAndStageStats.find(
-//   (matchupAndStageStat) => {
-//     return (
-//       matchupAndStageStat.userCharacterId === player.characterId &&
-//       matchupAndStageStat.opponentCharacterId === opponent.characterId &&
-//       matchupAndStageStat.stageId === stageId
-//     );
-//   },
-// );
+// TODO: narrow the head-to-head view to the current matchup / stage /
+// matchup-and-stage, reading opponentStats.stageStats, .matchupStats and
+// .matchupAndStageStats keyed on currentReplayInfo.

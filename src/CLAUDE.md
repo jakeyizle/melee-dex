@@ -17,6 +17,12 @@ This renderer is the **only writer to IndexedDB**. Workers parse, main routes, a
 `replayStore.ts` commits each batch on `insert-parsed-replays` and acks it with
 `replays-inserted`. See `electron/CLAUDE.md` for the worker pool.
 
+Writes are **per batch, not per replay**: `insertReplays` / `insertBadReplays` take the whole
+batch, because localforage opens an IndexedDB transaction per `setItem` and awaiting two of them
+per replay made the import 20 serialized round trips per batch of 10. Batches are still committed
+one after another — `pendingWrites` chains them, and that chain is what keeps the ack, and so the
+pool's backpressure, in order.
+
 ## Conventions
 
 - **MUI v7 with `sx` props, exclusively.** No CSS files, no Tailwind, no styled-components. Theme
@@ -55,32 +61,38 @@ callbacks a block body.
 
 All aggregation lives in `src/utils/statUtils.ts`. Everything funnels through one core:
 
-- `getStatsFromReplay(replay, code, fullStats)` — **the shared core.** Folds a single replay into
-  a `FullStats` by mutating it in place, updating the overall / stage / matchup / matchup-and-stage
-  buckets and the per-opponent record together. Every path below ends up here, so this is what you
-  edit to change how a replay is counted. It returns early when the replay has no user/opponent
-  pair, which is how replays the user did not play in are skipped.
+- `applyReplayToStats(stats, replay, code)` — **the shared core.** Folds a single replay into a
+  `FullStats` by mutating it in place, counting it into the overall / stage / matchup /
+  matchup-and-stage buckets and the per-opponent record together. Every path below ends up here,
+  so this is what you edit to change how a replay is counted. It skips replays the user did not
+  play in, and **always returns `stats`** — the store writes the result straight back into
+  `newStatInfo`, so returning nothing would blank the dashboard.
 
-The batch path, run once on `end-loading-replays`:
+Each of the four buckets is the same upsert under a different key: `countGameInStats` calls
+`countGameInRow(rows, matches, createRow, isWin)`, which finds the row or pushes a zeroed one and
+then counts the game into it.
 
-- `getStats(code)` — the DB adapter. **Streams** via `executeCallbackOnEachReplay` straight into
-  `getStatsFromReplay`, so a large replay library is never materialized into an array. It
-  deliberately does **not** call `buildStats`. Keep it that way.
+The two ways a `FullStats` gets built:
+
+- `getStats(code)` — the batch path, run once on `end-loading-replays`. **Streams** via
+  `executeCallbackOnEachReplay` straight into the core, so a large replay library is never
+  materialized into an array. It deliberately does **not** call `buildStats`. Keep it that way.
 - `buildStats(replays, code)` — pure fold over any iterable of replays. **Used only by the unit
   tests**, which need to build a `FullStats` synchronously without IndexedDB; production always
   goes through `getStats`.
 
 The live path, run on `update-stats` when a game finishes:
 
-- `updateStatsWithReplay(stats, code)` — the DB adapter; reads the latest replay and delegates.
-- `applyReplayToStats(stats, replay, code)` — guards against a null replay and against replays the
-  user is not in, then delegates to the core. Mutates `stats` in place and returns it (returns
-  `undefined` when it declines).
+- `updateStatsWithReplay(stats, code, replayName)` — the DB adapter. `replayName` comes from the
+  `update-stats` payload: main names the replay it just stored. It deliberately does **not** read
+  the latest-replay pointer — a rejected live game stores nothing, and the pointer would hand back
+  the *previous* replay to be counted a second time.
 
 Derived, pure:
 
 - `getCurrentHeadToHeadStats(stats, currentReplayInfo, code)` — narrows a `FullStats` to the
-  single-opponent view the dashboard renders.
+  single-opponent view the dashboard renders. One pass over the matchup rows, totalling each
+  side's character usage into a `Map`.
 - `getMostRecentMatches(replays, n)` — only consumer is `RecentMatchesCardContent.tsx`, which is
   one of the legacy cards (see Gotchas), so it is effectively dead in production.
 - `createEmptyFullStats()` — the zero value `getStats` and `buildStats` start from. The live
@@ -107,21 +119,22 @@ plus `opponentSpecificStats: OpponentStats[]`. Shared types are in `src/types.d.
 - `electron/worker/replayParser.ts` swallows parse errors in bare `try/catch`, same as the main
   process; anything that throws is filed as a bad replay.
 - `src/type/electron-updater.d.ts` is unused.
-- `replayStore.ts` still has two leftover `console.log` calls in its IPC handlers.
 
 ## Known behavior quirks
 
 These are bugs. The unit suite **asserts them as-is** so that refactors stay honest; each has a
 `// BUG` comment at the test. If you fix one, update its test in the same change — don't delete it.
 
-1. `getCurrentHeadToHeadStats` — opponent character play rate uses `+=` where the user branch
-   uses `=`, so a character appearing in several matchup rows accumulates and can exceed 100%.
+1. ~~`getCurrentHeadToHeadStats` opponent play rate accumulates past 100%~~ — **fixed.** Both
+   sides now total into a `Map` in one pass. Numbering is kept so the remaining `// BUG`
+   references still line up.
 2. `getMostRecentMatches` — sorts the caller's array in place, reordering it as a side effect.
 3. `selectReplayCount` — counts the `latestReplayKey` pointer, so it is always one too high.
 4. `executeCallbackOnEachReplay` — yields that pointer's **string** value as if it were a
    `Replay`; this is why the stat code uses `replay.players?.` rather than `replay.players.`.
-5. `getMostCommonUser([])` against an empty store returns `undefined` (`Math.max(...[])` is
-   `-Infinity`, which matches no key) despite being typed `Promise<string>`.
+5. ~~`getMostCommonUser([])` returns `undefined` against an empty store~~ — **fixed.** It returns
+   `""`, as its signature always promised; the startup path used to call `.toUpperCase()` on the
+   `undefined` and throw, leaving a first run stuck on the loading bar.
 6. `getMostCommonUser` returns the **second** candidate on a tie, though the comment in
    `determineUserBasedOnLiveGame` says "if tied, return first player".
 7. `tryGetWinner` — equal stock counts yield no winner, so the replay is filed as bad and never

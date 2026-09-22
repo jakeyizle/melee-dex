@@ -14,9 +14,10 @@ export const replayRepository = createReplayRepository(
 
 export const {
   selectAllReplayNames,
-  insertReplay,
-  insertBadReplay,
+  insertReplays,
+  insertBadReplays,
   selectReplayCount,
+  selectReplay,
   selectLatestReplay,
   getMostCommonUser,
   selectBadReplayCount,

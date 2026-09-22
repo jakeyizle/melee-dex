@@ -16,12 +16,16 @@ vi.mock("@/db/replays", () => ({
   getMostCommonUser: vi.fn(async () => USER),
   determineUserBasedOnLiveGame: vi.fn(async () => USER),
   attemptGetUser: vi.fn(async () => USER),
-  selectLatestReplay: vi.fn(async () => null),
+  selectReplay: vi.fn(async () => null),
+  insertReplays: vi.fn(async () => {}),
+  insertBadReplays: vi.fn(async () => {}),
   executeCallbackOnEachReplay: vi.fn(async () => {}),
 }));
 
 vi.mock("@/db/settings", () => ({
-  updateUsernameIfEmpty: vi.fn(async (name: string) => name),
+  updateUsernameIfEmpty: vi.fn(
+    async (suggestUsername: () => Promise<string>) => await suggestUsername(),
+  ),
 }));
 
 const db = await import("@/db/replays");
@@ -50,6 +54,8 @@ beforeEach(() => {
 
 describe("starting a replay import", () => {
   it("asks the main process to load the directory, passing the replays it already has", async () => {
+    ipcRenderer.setInvokeResult("begin-loading-replays", true);
+
     await useReplayStore.getState().loadReplayDirectory("C:/Slippi");
 
     expect(ipcRenderer.invocations).toEqual([
@@ -68,6 +74,17 @@ describe("starting a replay import", () => {
     await useReplayStore.getState().loadReplayDirectory("");
 
     expect(ipcRenderer.invocations).toEqual([]);
+    expect(useReplayStore.getState().isLoadingReplays).toBe(false);
+  });
+
+  // Main declines when a load is already running or the directory cannot be
+  // read. No `end-loading-replays` follows, so a progress bar raised here would
+  // stay up for the rest of the session.
+  it("does not show progress when the main process declines the import", async () => {
+    ipcRenderer.setInvokeResult("begin-loading-replays", false);
+
+    await useReplayStore.getState().loadReplayDirectory("C:/Slippi");
+
     expect(useReplayStore.getState().isLoadingReplays).toBe(false);
   });
 });
@@ -107,6 +124,40 @@ describe("import progress", () => {
       userConnectCode: USER,
     });
     expect(useReplayStore.getState().newStatInfo).not.toBeNull();
+  });
+});
+
+describe("storing a batch of parsed replays", () => {
+  const batch = {
+    token: 7,
+    count: 3,
+    replays: [makeMatch({ isWin: true }), makeMatch({ isWin: false })],
+    badReplays: [{ name: "Bad.slp", path: "C:/Slippi/Bad.slp" }],
+  };
+
+  it("writes the batch and acks it so the worker is released", async () => {
+    await ipcRenderer.emit("insert-parsed-replays", batch);
+    // The write chain is a promise, so let it settle before asserting.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(db.insertReplays).toHaveBeenCalledWith(batch.replays);
+    expect(db.insertBadReplays).toHaveBeenCalledWith(batch.badReplays);
+    expect(ipcRenderer.invocations).toEqual([
+      { channel: "replays-inserted", args: { token: 7, count: 3 } },
+    ]);
+  });
+
+  // The ack is the pool's backpressure: dropping it on a failed write would
+  // wedge the worker that produced this batch for the rest of the import.
+  it("still acks when the write fails", async () => {
+    vi.mocked(db.insertReplays).mockRejectedValueOnce(new Error("quota"));
+
+    await ipcRenderer.emit("insert-parsed-replays", batch);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(ipcRenderer.invocations).toEqual([
+      { channel: "replays-inserted", args: { token: 7, count: 3 } },
+    ]);
   });
 });
 
@@ -173,6 +224,8 @@ describe("a live game starting", () => {
 });
 
 describe("a finished game updating the stats", () => {
+  const finished = { replayName: "Game_Finished.slp" };
+
   it("identifies the user from the live game when one is in progress", async () => {
     useReplayStore.setState({
       newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
@@ -182,7 +235,7 @@ describe("a finished game updating the stats", () => {
       },
     });
 
-    await ipcRenderer.emit("update-stats", {});
+    await ipcRenderer.emit("update-stats", finished);
 
     expect(db.determineUserBasedOnLiveGame).toHaveBeenCalledWith([
       USER,
@@ -197,7 +250,7 @@ describe("a finished game updating the stats", () => {
       currentReplayInfo: null,
     });
 
-    await ipcRenderer.emit("update-stats", {});
+    await ipcRenderer.emit("update-stats", finished);
 
     expect(db.attemptGetUser).toHaveBeenCalled();
     expect(db.determineUserBasedOnLiveGame).not.toHaveBeenCalled();
@@ -206,16 +259,31 @@ describe("a finished game updating the stats", () => {
   it("does nothing when no stats have been loaded yet", async () => {
     useReplayStore.setState({ newStatInfo: null, userConnectCode: "" });
 
-    await ipcRenderer.emit("update-stats", {});
+    await ipcRenderer.emit("update-stats", finished);
 
     expect(useReplayStore.getState().newStatInfo).toBeNull();
     expect(useReplayStore.getState().userConnectCode).toBe("");
   });
 
   it("folds the newly finished replay into the running stats", async () => {
-    vi.mocked(db.selectLatestReplay).mockResolvedValueOnce(
-      makeMatch({ isWin: true }),
-    );
+    vi.mocked(db.selectReplay).mockResolvedValueOnce(makeMatch({ isWin: true }));
+    useReplayStore.setState({
+      newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
+      currentReplayInfo: { stageId: "31", players: liveGameArgs.players },
+    });
+
+    await ipcRenderer.emit("update-stats", finished);
+
+    expect(db.selectReplay).toHaveBeenCalledWith("Game_Finished.slp");
+    expect(
+      useReplayStore.getState().newStatInfo?.stats.overallStat,
+    ).toMatchObject({ totalCount: 2, winCount: 2 });
+  });
+
+  // Main only names a replay it actually stored. Without a name there is
+  // nothing new to count, and the store must not go looking for "the latest"
+  // replay — that is the previous game, and it has already been counted.
+  it("ignores a notification that names no replay", async () => {
     useReplayStore.setState({
       newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
       currentReplayInfo: { stageId: "31", players: liveGameArgs.players },
@@ -223,8 +291,24 @@ describe("a finished game updating the stats", () => {
 
     await ipcRenderer.emit("update-stats", {});
 
+    expect(db.selectReplay).not.toHaveBeenCalled();
     expect(
       useReplayStore.getState().newStatInfo?.stats.overallStat,
-    ).toMatchObject({ totalCount: 2, winCount: 2 });
+    ).toMatchObject({ totalCount: 1 });
+  });
+
+  // The replay is on disk but the user is not in it (a spectated game, or the
+  // wrong player was identified). The running stats have to survive that.
+  it("keeps the existing stats when the finished replay cannot be counted", async () => {
+    vi.mocked(db.selectReplay).mockResolvedValueOnce(null);
+    const stats = buildStats([makeMatch({ isWin: true })], USER);
+    useReplayStore.setState({
+      newStatInfo: stats,
+      currentReplayInfo: { stageId: "31", players: liveGameArgs.players },
+    });
+
+    await ipcRenderer.emit("update-stats", finished);
+
+    expect(useReplayStore.getState().newStatInfo).toBe(stats);
   });
 });

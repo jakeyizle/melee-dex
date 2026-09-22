@@ -3,8 +3,8 @@ import {
   attemptGetUser,
   determineUserBasedOnLiveGame,
   getMostCommonUser,
-  insertBadReplay,
-  insertReplay,
+  insertBadReplays,
+  insertReplays,
   Replay,
   selectBadReplayCount,
   selectReplayCount,
@@ -70,11 +70,15 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
   loadReplayDirectory: async (replayDirectory) => {
     if (!replayDirectory) return;
     const existingReplayNames = await selectAllReplayNames();
-    await window.ipcRenderer.invoke("begin-loading-replays", {
+    // Only main can say whether an import began. If it declined — a load is
+    // already running, or the directory could not be read — no
+    // `end-loading-replays` is coming, and showing the progress bar would
+    // leave it up for the rest of the session.
+    const hasStarted = await window.ipcRenderer.invoke("begin-loading-replays", {
       replayDirectory,
       existingReplayNames,
     });
-    set({ isLoadingReplays: true });
+    if (hasStarted) set({ isLoadingReplays: true });
   },
 
   handleLiveReplay: async ({ filename, players, stageId }) => {
@@ -126,12 +130,8 @@ export const setupReplayStoreIpcListeners = () => {
 
     pendingWrites = pendingWrites
       .then(async () => {
-        for (const replay of replays) {
-          await insertReplay(replay);
-        }
-        for (const badReplay of badReplays) {
-          await insertBadReplay(badReplay);
-        }
+        await insertReplays(replays);
+        await insertBadReplays(badReplays);
       })
       .catch(() => {
         // A failed write must not wedge the pool - still ack so it moves on.
@@ -153,11 +153,12 @@ export const setupReplayStoreIpcListeners = () => {
     // const { statInfo, headToHeadReplays } = currentReplayInfo
     //   ? await getStatInfo({ currentReplayInfo })
     //   : { statInfo: null, headToHeadReplays: [] };
-    const userConnectCode = await updateUsernameIfEmpty(
-      await getMostCommonUser([]),
+    // getMostCommonUser reads every replay in the library, so it is passed
+    // unevaluated: it only runs when no username has been configured yet.
+    const userConnectCode = await updateUsernameIfEmpty(() =>
+      getMostCommonUser([]),
     );
     const statInfo = userConnectCode ? await getStats(userConnectCode) : null;
-    console.log(statInfo);
     setState({
       isLoadingReplays: false,
       currentReplaysLoaded: 0,
@@ -170,7 +171,13 @@ export const setupReplayStoreIpcListeners = () => {
     });
   });
 
-  window.ipcRenderer.on("update-stats", async () => {
+  // Main names the replay it just finished loading. Only a replay that was
+  // actually accepted and stored gets one, so there is nothing to fold in
+  // without it.
+  window.ipcRenderer.on("update-stats", async (_event, args) => {
+    const replayName = (args as { replayName?: string } | undefined)?.replayName;
+    if (!replayName) return;
+
     const { currentReplayInfo, newStatInfo } = getState();
     const userConnectCode = currentReplayInfo
       ? await determineUserBasedOnLiveGame(
@@ -178,12 +185,14 @@ export const setupReplayStoreIpcListeners = () => {
         )
       : await attemptGetUser();
     if (!userConnectCode || !newStatInfo) return;
-    const stats = await updateStatsWithReplay(newStatInfo, userConnectCode);
-    const headToHeadStats =
-      stats && currentReplayInfo
-        ? getCurrentHeadToHeadStats(stats, currentReplayInfo, userConnectCode)
-        : null;
-    console.log("update-stats", stats);
+    const stats = await updateStatsWithReplay(
+      newStatInfo,
+      userConnectCode,
+      replayName,
+    );
+    const headToHeadStats = currentReplayInfo
+      ? getCurrentHeadToHeadStats(stats, currentReplayInfo, userConnectCode)
+      : null;
     setState({ newStatInfo: stats, userConnectCode, headToHeadStats });
   });
 };

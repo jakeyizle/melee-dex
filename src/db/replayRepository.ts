@@ -48,25 +48,46 @@ export const createReplayRepository = (
     return [...goodNames, ...badNames];
   };
 
-  const insertReplay = async (replay: Replay) => {
-    await replaysStore.setItem(replay.name, replay);
-    await replaysStore.setItem(LATEST_REPLAY_KEY, replay.name);
+  /**
+   * Replays are always written a batch at a time, so this takes the batch.
+   * localforage opens an IndexedDB transaction per `setItem`, and the previous
+   * one-replay-at-a-time version awaited two of them per replay — 20 serialized
+   * round trips for a batch of 10. The writes within a batch are independent,
+   * so they go together and the latest-replay pointer is written once.
+   */
+  const insertReplays = async (replays: Replay[]) => {
+    if (replays.length === 0) return;
+    await Promise.all(
+      replays.map((replay) => replaysStore.setItem(replay.name, replay)),
+    );
+    // After the replays, so the pointer never names a key that is not there yet.
+    await replaysStore.setItem(
+      LATEST_REPLAY_KEY,
+      replays[replays.length - 1].name,
+    );
   };
 
-  const insertBadReplay = async ({
-    name,
-    path,
-  }: {
-    name: string;
-    path: string;
-  }) => {
-    await badReplaysStore.setItem(name, path);
+  const insertBadReplays = async (
+    badReplays: { name: string; path: string }[],
+  ) => {
+    await Promise.all(
+      badReplays.map(({ name, path }) => badReplaysStore.setItem(name, path)),
+    );
   };
 
   const selectReplayCount = async () => {
     return await replaysStore.length();
   };
 
+  const selectReplay = async (name: string) => {
+    return await replaysStore.getItem<Replay>(name);
+  };
+
+  /**
+   * Reads the `LATEST_REPLAY_KEY` pointer. Nothing on the live path uses this
+   * any more — a finished game is looked up by the name main reports, so the
+   * stats cannot be folded from a stale pointer when a replay is rejected.
+   */
   const selectLatestReplay = async () => {
     const latestReplayKey = (await replaysStore.getItem(
       LATEST_REPLAY_KEY,
@@ -98,7 +119,10 @@ export const createReplayRepository = (
       const maxKeys = Array.from(userCounts.entries())
         .filter(([key, value]) => value === maxValue)
         .map(([key]) => key);
-      return maxKeys[0];
+      // An empty store makes maxValue -Infinity, which matches no key. Say so
+      // with the empty string the signature promises: callers treat this as
+      // "no user yet", and one of them used to call .toUpperCase() on it.
+      return maxKeys[0] ?? "";
     }
     return firstUserValue > secondUserValue
       ? possibleUsers[0]
@@ -143,9 +167,10 @@ export const createReplayRepository = (
 
   return {
     selectAllReplayNames,
-    insertReplay,
-    insertBadReplay,
+    insertReplays,
+    insertBadReplays,
     selectReplayCount,
+    selectReplay,
     selectLatestReplay,
     getMostCommonUser,
     selectBadReplayCount,

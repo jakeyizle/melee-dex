@@ -82,8 +82,7 @@ This was previously a pool of invisible renderer windows that wrote to IndexedDB
 
 ## Gotchas
 
-- The repo is mid-refactor. Commit messages are informal, and `src/utils/statUtils.ts` ends with a
-  large commented-out TODO block about matchup/stage filtering.
+- The repo is mid-refactor. Commit messages are informal.
 - `.vite.config.flat.txt` and `.playwright.config.txt` are dead leftovers from the
   `electron-vite-react` template. They are not live config. Same origin: the template comments
   (`// #298`) and `electron-builder.json`'s still-placeholder `appId: "YourAppID"`.

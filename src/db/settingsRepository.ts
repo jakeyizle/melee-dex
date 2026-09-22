@@ -25,9 +25,24 @@ export const createSettingsRepository = (settingsStore: KeyValueStore) => {
     }
   };
 
-  const updateUsernameIfEmpty = async (username: string) => {
+  /**
+   * Returns the configured username, working one out only if there isn't one.
+   *
+   * `suggestUsername` is a thunk on purpose: the only suggestion the app has is
+   * `getMostCommonUser`, which reads every replay in the library. Passing its
+   * result in meant paying for that scan on every launch to then discard it.
+   */
+  const updateUsernameIfEmpty = async (
+    suggestUsername: () => Promise<string>,
+  ) => {
     const currentUsername = await selectSetting("username");
-    if (!currentUsername) upsertSetting("username", username.toUpperCase());
+    if (currentUsername) return currentUsername;
+
+    // Empty when nothing in the library identifies the user yet — a first run
+    // over a directory with no valid replays.
+    const username = await suggestUsername();
+    if (username) await upsertSetting("username", username.toUpperCase());
+
     return await selectSetting("username");
   };
 

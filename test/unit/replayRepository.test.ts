@@ -28,7 +28,7 @@ const seedReplays = async (
   repo: ReturnType<typeof setup>["repo"],
   replays: Replay[],
 ) => {
-  for (const replay of replays) await repo.insertReplay(replay);
+  for (const replay of replays) await repo.insertReplays([replay]);
 };
 
 describe("storing and retrieving replays", () => {
@@ -36,7 +36,7 @@ describe("storing and retrieving replays", () => {
     const { repo } = setup();
     const replay = makeReplay({ name: "Game_A.slp" });
 
-    await repo.insertReplay(replay);
+    await repo.insertReplays([replay]);
 
     expect(await repo.selectLatestReplay()).toEqual(replay);
   });
@@ -46,10 +46,32 @@ describe("storing and retrieving replays", () => {
     const first = makeReplay({ name: "Game_A.slp" });
     const second = makeReplay({ name: "Game_B.slp" });
 
-    await repo.insertReplay(first);
-    await repo.insertReplay(second);
+    await repo.insertReplays([first]);
+    await repo.insertReplays([second]);
 
     expect(await repo.selectLatestReplay()).toEqual(second);
+  });
+
+  it("stores every replay in a batch, and points at the last of them", async () => {
+    const { repo } = setup();
+    const first = makeReplay({ name: "Game_A.slp" });
+    const second = makeReplay({ name: "Game_B.slp" });
+    const third = makeReplay({ name: "Game_C.slp" });
+
+    await repo.insertReplays([first, second, third]);
+
+    expect(await repo.selectReplay("Game_A.slp")).toEqual(first);
+    expect(await repo.selectReplay("Game_B.slp")).toEqual(second);
+    expect(await repo.selectLatestReplay()).toEqual(third);
+  });
+
+  it("writes nothing at all for an empty batch", async () => {
+    const { repo, replaysStore } = setup();
+
+    await repo.insertReplays([]);
+
+    // Not even the pointer: an empty batch has no last replay to name.
+    expect(await replaysStore.length()).toBe(0);
   });
 
   it("has no latest replay when nothing has been stored", async () => {
@@ -58,10 +80,24 @@ describe("storing and retrieving replays", () => {
     expect(await repo.selectLatestReplay()).toBeNull();
   });
 
+  it("reads back a replay by name", async () => {
+    const { repo } = setup();
+    const replay = makeReplay({ name: "Game_A.slp" });
+    await repo.insertReplays([replay]);
+
+    expect(await repo.selectReplay("Game_A.slp")).toEqual(replay);
+  });
+
+  it("has no replay under a name that was never stored", async () => {
+    const { repo } = setup();
+
+    expect(await repo.selectReplay("Game_Missing.slp")).toBeNull();
+  });
+
   it("lists the names of both good and rejected replays", async () => {
     const { repo } = setup();
-    await repo.insertReplay(makeReplay({ name: "Good.slp" }));
-    await repo.insertBadReplay({ name: "Bad.slp", path: "C:/r/Bad.slp" });
+    await repo.insertReplays([makeReplay({ name: "Good.slp" })]);
+    await repo.insertBadReplays([{ name: "Bad.slp", path: "C:/r/Bad.slp" }]);
 
     const names = await repo.selectAllReplayNames();
 
@@ -71,8 +107,10 @@ describe("storing and retrieving replays", () => {
 
   it("counts rejected replays separately", async () => {
     const { repo } = setup();
-    await repo.insertBadReplay({ name: "Bad1.slp", path: "C:/r/Bad1.slp" });
-    await repo.insertBadReplay({ name: "Bad2.slp", path: "C:/r/Bad2.slp" });
+    await repo.insertBadReplays([
+      { name: "Bad1.slp", path: "C:/r/Bad1.slp" },
+      { name: "Bad2.slp", path: "C:/r/Bad2.slp" },
+    ]);
 
     expect(await repo.selectBadReplayCount()).toBe(2);
   });
@@ -141,12 +179,12 @@ describe("working out who the user is", () => {
     expect(await repo.getMostCommonUser([USER, OPPONENT])).toBe(OPPONENT);
   });
 
-  // BUG (quirk #5): with an empty store, Math.max(...[]) is -Infinity, nothing
-  // matches it, and the function returns undefined despite promising a string.
-  it("returns undefined when there are no replays at all", async () => {
+  // Was quirk #5: this returned undefined despite promising a string, and the
+  // empty-library startup path called .toUpperCase() on it.
+  it("returns no user at all when there are no replays", async () => {
     const { repo } = setup();
 
-    expect(await repo.getMostCommonUser([])).toBeUndefined();
+    expect(await repo.getMostCommonUser([])).toBe("");
   });
 });
 
@@ -194,7 +232,7 @@ describe("attemptGetUser", () => {
 describe("the latest-replay pointer", () => {
   it("is stored in the replays store under a reserved key", async () => {
     const { repo, replaysStore } = setup();
-    await repo.insertReplay(makeReplay({ name: "Game_A.slp" }));
+    await repo.insertReplays([makeReplay({ name: "Game_A.slp" })]);
 
     expect(await replaysStore.getItem(LATEST_REPLAY_KEY)).toBe("Game_A.slp");
   });

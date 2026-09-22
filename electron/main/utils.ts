@@ -10,40 +10,32 @@ export type ReplayFile = { path: string; name: string };
 
 export let mainWindow: BrowserWindow | null = null;
 
-async function getFiles(path = "./") {
-  // add "/" to the end of path if not present
-  if (path[path.length - 1] !== "/") {
-    path += "/";
-  }
-  const entries = fs.readdirSync(path, {
+/**
+ * Every `*.slp` under `directory`, including subdirectories. Note that this
+ * deliberately does not match `.slp.old`, so those files are never imported.
+ *
+ * Node walks the tree itself, off the main thread. The hand-rolled recursion
+ * this replaced used `readdirSync`, which blocked the main process for the
+ * whole walk — every directory, every level.
+ */
+export async function getReplayFiles(
+  directory: string | undefined,
+): Promise<ReplayFile[]> {
+  if (!directory) return [];
+
+  const entries = await fs.promises.readdir(directory, {
+    recursive: true,
     withFileTypes: true,
   });
-  // Get files within the current directory and add a path key to the file objects
-  const files = entries
-    .filter((file) => !file.isDirectory())
-    .map((file) => ({
-      ...file,
-      path: path + file.name,
+
+  return entries
+    .filter((entry) => !entry.isDirectory() && entry.name.endsWith(".slp"))
+    .map((entry) => ({
+      name: entry.name,
+      // parentPath is the directory the entry was found in, which is what makes
+      // this correct for replays kept in subfolders.
+      path: path.join(entry.parentPath, entry.name),
     }));
-
-  // Get folders within the current directory
-  const folders = entries.filter((folder) => folder.isDirectory());
-  /*
-        Add the found files within the subdirectory to the files array by calling the
-        current function itself
-      */
-  for (const folder of folders)
-    files.push(...(await getFiles(`${path}${folder.name}/`)));
-
-  return files;
-}
-
-export async function getReplayFiles(path: string | undefined) {
-  let files = await getFiles(path);
-  //ends in .slp
-  let regExp = /.*\.slp$/;
-  let replays = files.filter((file) => regExp.test(file.name));
-  return replays;
 }
 
 /**

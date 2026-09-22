@@ -54,7 +54,9 @@ ipcMain.handle(
   ) => {
     const { replayDirectory, existingReplayNames } = args;
 
-    replayLoadManager.beginLoadingReplayDirectory(
+    // Awaited, and the answer returned: the renderer only shows its progress
+    // bar when an import really started.
+    return await replayLoadManager.beginLoadingReplayDirectory(
       replayDirectory,
       existingReplayNames,
     );

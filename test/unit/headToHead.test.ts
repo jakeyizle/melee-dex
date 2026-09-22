@@ -152,14 +152,11 @@ describe("getCurrentHeadToHeadStats — the reported record", () => {
     ).toBe(1);
   });
 
-  // BUG (see src/CLAUDE.md "Known behavior quirks" #1): for an opponent character
-  // already in the list, the code does `playRate += ...` where the user branch does
-  // `playRate = ...`. Revisiting the same opponent character therefore accumulates
-  // the rate instead of overwriting it, and it can exceed 100%.
-  // Locked in deliberately — this test documents the bug, it does not endorse it.
-  it("double-counts an opponent character's play rate when it recurs across matchups", () => {
+  // Was quirk #1: the opponent branch did `playRate += ...` where the user
+  // branch did `playRate = ...`, so a character spanning several matchup rows
+  // accumulated its rate and could report over 100%.
+  it("counts an opponent character once when it recurs across matchups", () => {
     // Two matchup rows both carry opponent character "9": (user 0 vs 9) and (user 2 vs 9).
-    // The second row revisits "9" and hits the `+=` branch.
     const stats = buildStats(
       [
         makeMatch({ userCharacterId: "0", opponentCharacterId: "9" }),
@@ -174,8 +171,8 @@ describe("getCurrentHeadToHeadStats — the reported record", () => {
       (u) => u.characterId === "9",
     );
 
-    // The opponent played "9" in 2 of 2 games, so an honest rate would be 100.
+    // The opponent played "9" in 2 of 2 games.
     expect(opponentFox?.playCount).toBe(2);
-    expect(opponentFox?.playRate).toBe(200);
+    expect(opponentFox?.playRate).toBe(100);
   });
 });

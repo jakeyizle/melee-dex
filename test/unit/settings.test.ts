@@ -65,7 +65,7 @@ describe("updateUsernameIfEmpty", () => {
   it("stores the suggested username, uppercased, when none is set", async () => {
     const settings = setup();
 
-    const result = await settings.updateUsernameIfEmpty("user#001");
+    const result = await settings.updateUsernameIfEmpty(async () => "user#001");
 
     expect(result).toBe("USER#001");
     expect(await settings.selectSetting("username")).toBe("USER#001");
@@ -74,8 +74,33 @@ describe("updateUsernameIfEmpty", () => {
   it("leaves an already-configured username alone", async () => {
     const settings = setup({ username: "MINE#123" });
 
-    const result = await settings.updateUsernameIfEmpty("OTHER#999");
+    const result = await settings.updateUsernameIfEmpty(async () => "OTHER#999");
 
     expect(result).toBe("MINE#123");
+  });
+
+  // Working out a username reads the whole replay library, so it must not
+  // happen at all when one is already configured.
+  it("does not ask for a suggestion when a username is already set", async () => {
+    const settings = setup({ username: "MINE#123" });
+    let asked = false;
+
+    await settings.updateUsernameIfEmpty(async () => {
+      asked = true;
+      return "OTHER#999";
+    });
+
+    expect(asked).toBe(false);
+  });
+
+  // Nothing in the library identifies the user yet — a first run over a
+  // directory with no valid replays. This used to throw on .toUpperCase().
+  it("stores nothing when there is no username to suggest", async () => {
+    const settings = setup();
+
+    const result = await settings.updateUsernameIfEmpty(async () => "");
+
+    expect(result).toBe("");
+    expect(await settings.selectSetting("username")).toBe("");
   });
 });

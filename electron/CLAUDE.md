@@ -7,6 +7,9 @@ Read the root `CLAUDE.md` first for commands and the overall data flow.
 - `electron/main/index.ts` — single-instance lock, Win7 GPU disable, `setAppUserModelId` on win32.
   Importing `./ipc` is what registers every handler.
 - `electron/main/utils.ts` — `createMainWindow()`, `getNumberOfWorkers()`, `getReplayFiles()`.
+  `getReplayFiles` is one `fs.promises.readdir(dir, { recursive: true, withFileTypes: true })`,
+  building each path from the entry's `parentPath`. It replaced a hand-rolled recursion over
+  `readdirSync` that blocked the main process for the length of the walk.
 - `electron/main/parserWorker.ts` — `ParserWorker`, one `utilityProcess` and its ready/crash handling.
 - `electron/worker/` — `replayParser.ts` (the worker entry) and `protocol.ts` (the message contract).
 - `electron/main/replayLoadManager.ts` — the singleton `ReplayLoadManager`, which owns both the
@@ -30,7 +33,10 @@ All workers are retired when the queue drains, so an idle app runs no parser pro
 forks a fresh one (~575ms, which is irrelevant on a path that runs once per finished game).
 
 If a worker dies mid-batch its files are requeued and re-parsed **one at a time**; a file that
-kills a worker while isolated is filed as a bad replay, which is what stops the retry loop.
+kills a worker while isolated is filed as a bad replay, which is what stops the retry loop. A
+crashed worker is also scrubbed from `awaitingInsert`, so the ack for the batch it had already
+handed over cannot dispatch a fresh batch into a dead process — `parse` would silently refuse it
+and those files would be lost for the run.
 
 **This used to be a pool of invisible `BrowserWindow`s** loading a `workerRenderer.html`, which
 wrote to IndexedDB directly. See the git history if you find stale references.
@@ -39,10 +45,18 @@ wrote to IndexedDB directly. See the git history if you find stale references.
 
 1. **Bulk import** — the renderer sends `begin-loading-replays` with the replay directory and every
    already-known replay name (from both the `replays` and `badReplays` stores). The manager walks
-   the tree for `*.slp`, diffs, and hands batches to workers.
+   the tree for `*.slp`, diffs the names through a `Set` (both sides are the size of the library,
+   so an array scan here was quadratic), and hands batches to workers. The handler **awaits the
+   manager and returns whether an import started**: the renderer raises its progress bar only on
+   `true`, because when the manager declines no `end-loading-replays` is coming and the bar would
+   never come down.
 2. **Live** — `fs.watch(directory, { recursive: true })` builds a `SlippiGame` per event and emits
    `live-replay-loaded`. Once the game has winners and more than 30s of frames, the file is queued
-   for normal loading and `update-stats` follows.
+   for normal loading. `ingestedLiveFiles` remembers the paths already queued, because fs.watch
+   keeps firing for a finished replay and the watcher is re-attached after every load — without it
+   the same game is ingested, and counted, repeatedly. `update-stats` follows **only if the parser
+   accepted the file**, and carries its `replayName`; a rejected live game (a CPU match, a parse
+   failure) stores nothing and must not make the renderer re-count its previous replay.
 
 ## IPC channels
 
@@ -50,7 +64,7 @@ Renderer → main (`ipcMain.handle`): `get-app-version`, `check-for-updates`, `s
 `begin-loading-replays`, `replays-inserted`.
 
 Main → main renderer: `update-ready`, `update-replay-load-progress`, `live-replay-loaded`,
-`insert-parsed-replays`, `end-loading-replays`, `update-stats`.
+`insert-parsed-replays`, `end-loading-replays`, `update-stats` (`{ replayName }`).
 
 Main ↔ worker (`utilityProcess` messages, not `ipcMain`): `parse` out, `ready` / `parsed` back.
 
@@ -74,12 +88,15 @@ Main ↔ worker (`utilityProcess` messages, not `ipcMain`): `parse` out, `ready`
   and `app.commandLine.appendSwitch("js-flags", ...)` all leave `heap_size_limit` at 4096, and a
   forced GC frees the heap (69MB → 25MB) without returning pages to the OS (RSS 159 → 158). It
   plateaus rather than leaking, so **worker count is the only lever** — and it is linear.
-- Path handling is POSIX-flavored (`directory + "/" + filename`, `filename.split("/")`) even though
-  `fs.watch` on Windows hands back backslash-separated relative paths. This is a live bug source
-  for replays kept in subdirectories.
+- The watcher uses `path.join` / `path.basename` on what `fs.watch` hands back, which on Windows
+  is a backslash-separated relative path. It used to build `directory + "/" + filename` and split
+  on `"/"`, so a replay in a subdirectory was stored under a name the import could never match and
+  was re-imported on every launch. Note the local `const path = ...` that shadowed the module is
+  gone — that shadow is why the split was there.
 - `fs.watch` fires on partial writes, and the handlers wrap everything in bare `try {} catch {}`.
   Live-detection failures are therefore completely silent — add logging before concluding the
-  watcher is not firing.
+  watcher is not firing. `listenForReplayFile` returns without attaching a watcher at all if the
+  directory does not exist, because `fs.watch` throws outright in that case.
 - Rejected replays (under 30s, not exactly 2 human players, missing connect code / character /
   stage) go to the `badReplays` store and are **permanently skipped** on every later import.
 - The updater sets `autoUpdater.forceDevUpdateConfig = true` unconditionally, so in dev it reads
