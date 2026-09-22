@@ -131,18 +131,14 @@ const widenMatchDates = (opponentStats: OpponentStats, date: string) => {
  * Returns `fullStats` whether or not the replay counted — a replay the user did
  * not play in is skipped. The store writes the result straight back into
  * `newStatInfo`, so returning nothing here would blank the dashboard.
- *
- * `replay.players?.` rather than `replay.players.` is deliberate: iterating the
- * replay store also yields the latest-replay pointer's string value. See
- * "Known behavior quirks" #4 in src/CLAUDE.md.
  */
 export const applyReplayToStats = (
   fullStats: FullStats,
   replay: Replay | null,
   userConnectCode: string,
 ): FullStats => {
-  const user = replay?.players?.find((p) => p.connectCode === userConnectCode);
-  const opponent = replay?.players?.find(
+  const user = replay?.players.find((p) => p.connectCode === userConnectCode);
+  const opponent = replay?.players.find(
     (p) => p.connectCode !== userConnectCode,
   );
   if (!replay || !user || !opponent) return fullStats;

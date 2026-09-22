@@ -32,27 +32,7 @@ const seedReplays = async (
 };
 
 describe("storing and retrieving replays", () => {
-  it("stores a replay under its filename and remembers it as the latest", async () => {
-    const { repo } = setup();
-    const replay = makeReplay({ name: "Game_A.slp" });
-
-    await repo.insertReplays([replay]);
-
-    expect(await repo.selectLatestReplay()).toEqual(replay);
-  });
-
-  it("treats the most recently inserted replay as the latest", async () => {
-    const { repo } = setup();
-    const first = makeReplay({ name: "Game_A.slp" });
-    const second = makeReplay({ name: "Game_B.slp" });
-
-    await repo.insertReplays([first]);
-    await repo.insertReplays([second]);
-
-    expect(await repo.selectLatestReplay()).toEqual(second);
-  });
-
-  it("stores every replay in a batch, and points at the last of them", async () => {
+  it("stores every replay in a batch under its filename", async () => {
     const { repo } = setup();
     const first = makeReplay({ name: "Game_A.slp" });
     const second = makeReplay({ name: "Game_B.slp" });
@@ -62,7 +42,7 @@ describe("storing and retrieving replays", () => {
 
     expect(await repo.selectReplay("Game_A.slp")).toEqual(first);
     expect(await repo.selectReplay("Game_B.slp")).toEqual(second);
-    expect(await repo.selectLatestReplay()).toEqual(third);
+    expect(await repo.selectReplay("Game_C.slp")).toEqual(third);
   });
 
   it("writes nothing at all for an empty batch", async () => {
@@ -70,17 +50,10 @@ describe("storing and retrieving replays", () => {
 
     await repo.insertReplays([]);
 
-    // Not even the pointer: an empty batch has no last replay to name.
     expect(await replaysStore.length()).toBe(0);
   });
 
-  it("has no latest replay when nothing has been stored", async () => {
-    const { repo } = setup();
-
-    expect(await repo.selectLatestReplay()).toBeNull();
-  });
-
-  it("reads back a replay by name", async () => {
+  it("reads back a replay by name", async () =>{
     const { repo } = setup();
     const replay = makeReplay({ name: "Game_A.slp" });
     await repo.insertReplays([replay]);
@@ -115,47 +88,47 @@ describe("storing and retrieving replays", () => {
     expect(await repo.selectBadReplayCount()).toBe(2);
   });
 
-  // BUG (see src/CLAUDE.md "Known behavior quirks" #3): the "latestReplayKey"
-  // pointer is stored inside the replays store, so it is counted as if it were
-  // a replay. The count is always one higher than the number of replays.
-  it("over-counts replays by one because the latest-replay pointer is stored alongside them", async () => {
+  // Was quirk #3: the replays store also held a "latestReplayKey" pointer,
+  // which length() counted as though it were a replay.
+  it("counts exactly the replays that were stored", async () => {
     const { repo } = setup();
     await seedReplays(repo, [makeReplay(), makeReplay()]);
 
-    expect(await repo.selectReplayCount()).toBe(3);
+    expect(await repo.selectReplayCount()).toBe(2);
   });
 
-  // BUG (same root cause, quirk #4): iteration yields the pointer's string value
-  // as though it were a Replay. Every consumer must tolerate it — which is why
-  // the stat code reaches for `replay.players?.` rather than `replay.players.`.
-  it("hands the latest-replay pointer to callers iterating replays", async () => {
+  // Was quirk #4: iteration used to yield that pointer's string value as though
+  // it were a Replay, so every consumer had to defend against it.
+  it("yields only replays to callers iterating the store", async () => {
     const { repo } = setup();
-    await seedReplays(repo, [makeReplay({ name: "Game_A.slp" })]);
+    const replay = makeReplay({ name: "Game_A.slp" });
+    await seedReplays(repo, [replay]);
 
     const seen: unknown[] = [];
     // The callback must not return a value: localforage (and the in-memory fake)
     // treat a non-undefined return as an early exit from the iteration.
-    await repo.executeCallbackOnEachReplay((replay) => {
-      seen.push(replay);
+    await repo.executeCallbackOnEachReplay((r) => {
+      seen.push(r);
     });
 
-    expect(seen).toHaveLength(2);
-    expect(seen).toContain("Game_A.slp");
+    expect(seen).toEqual([replay]);
   });
 });
 
 describe("working out who the user is", () => {
   it("picks whichever candidate appears in more stored replays", async () => {
     const { repo } = setup();
+    // USER in 3, OPPONENT in 1. The counts have to actually differ for this to
+    // be testing what it says — with one replay each they tie, and the answer
+    // comes from the tie-break below instead.
     await seedReplays(repo, [
       makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
       makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
-      makeReplay({
-        players: [makePlayer(OPPONENT, "0"), makePlayer(THIRD_PLAYER, "9")],
-      }),
+      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
     ]);
 
     expect(await repo.getMostCommonUser([OPPONENT, USER])).toBe(USER);
+    expect(await repo.getMostCommonUser([USER, OPPONENT])).toBe(USER);
   });
 
   it("falls back to the most frequent player overall when neither candidate is known", async () => {
@@ -168,15 +141,18 @@ describe("working out who the user is", () => {
     expect(await repo.getMostCommonUser(["NONE#000", "ALSO#000"])).toBe(USER);
   });
 
-  // BUG (quirk #6): the comment in determineUserBasedOnLiveGame says "if tied,
-  // return first player", but the ternary returns possibleUsers[1] on a tie.
-  it("returns the second candidate when both appear equally often", async () => {
+  // Was quirk #6: the ternary returned possibleUsers[1] on a tie, contradicting
+  // its own comment. The candidates arrive in the live game's port order, so
+  // which player you got was decided by which port they plugged into.
+  it("returns the first candidate when both appear equally often", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
       makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
     ]);
 
-    expect(await repo.getMostCommonUser([USER, OPPONENT])).toBe(OPPONENT);
+    expect(await repo.getMostCommonUser([USER, OPPONENT])).toBe(USER);
+    // Same two players, opposite port order.
+    expect(await repo.getMostCommonUser([OPPONENT, USER])).toBe(OPPONENT);
   });
 
   // Was quirk #5: this returned undefined despite promising a string, and the
@@ -229,11 +205,22 @@ describe("attemptGetUser", () => {
   });
 });
 
-describe("the latest-replay pointer", () => {
-  it("is stored in the replays store under a reserved key", async () => {
+describe("the legacy latest-replay pointer", () => {
+  it("is no longer written when replays are stored", async () => {
     const { repo, replaysStore } = setup();
+
     await repo.insertReplays([makeReplay({ name: "Game_A.slp" })]);
 
-    expect(await replaysStore.getItem(LATEST_REPLAY_KEY)).toBe("Game_A.slp");
+    expect(await replaysStore.getItem(LATEST_REPLAY_KEY)).toBeNull();
+  });
+
+  it("is cleared out of a store that still has one", async () => {
+    const { repo, replaysStore } = setup();
+    await replaysStore.setItem(LATEST_REPLAY_KEY, "Game_A.slp");
+
+    await repo.deleteLegacyLatestReplayPointer();
+
+    expect(await replaysStore.getItem(LATEST_REPLAY_KEY)).toBeNull();
+    expect(await repo.selectReplayCount()).toBe(0);
   });
 });

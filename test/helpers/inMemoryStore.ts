@@ -17,6 +17,9 @@ export const createInMemoryStore = (
       data.set(key, value);
       return value;
     },
+    async removeItem(key: string): Promise<void> {
+      data.delete(key);
+    },
     async keys(): Promise<string[]> {
       return Array.from(data.keys());
     },

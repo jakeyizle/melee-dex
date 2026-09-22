@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
   attemptGetUser,
+  deleteLegacyLatestReplayPointer,
   determineUserBasedOnLiveGame,
   getMostCommonUser,
   insertBadReplays,
@@ -69,6 +70,9 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
 
   loadReplayDirectory: async (replayDirectory) => {
     if (!replayDirectory) return;
+    // Clears a row older versions left in the replays store. Delete this, and
+    // the function behind it, once it has run.
+    await deleteLegacyLatestReplayPointer();
     const existingReplayNames = await selectAllReplayNames();
     // Only main can say whether an import began. If it declined — a load is
     // already running, or the directory could not be read — no

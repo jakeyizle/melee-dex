@@ -17,6 +17,7 @@ vi.mock("@/db/replays", () => ({
   determineUserBasedOnLiveGame: vi.fn(async () => USER),
   attemptGetUser: vi.fn(async () => USER),
   selectReplay: vi.fn(async () => null),
+  deleteLegacyLatestReplayPointer: vi.fn(async () => {}),
   insertReplays: vi.fn(async () => {}),
   insertBadReplays: vi.fn(async () => {}),
   executeCallbackOnEachReplay: vi.fn(async () => {}),

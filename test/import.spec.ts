@@ -106,10 +106,9 @@ suite("importing a replay directory", () => {
     // Six are valid; Game_20250422T214211.slp is 24 frames long and is rejected.
     expect(rejectedCount).toBe("1");
 
-    // BUG (src/CLAUDE.md "Known behavior quirks" #3): the displayed total counts
-    // the "latestReplayKey" pointer as though it were a replay, so six imported
-    // replays are reported as seven. Asserted as-is so the UI stays pinned.
-    expect(loadedCount).toBe("7");
+    // Was quirk #3: the replays store also held a "latestReplayKey" pointer,
+    // which was counted as a replay and made this report seven.
+    expect(loadedCount).toBe("6");
   });
 
   test("the imported replays survive a restart", async () => {
@@ -127,6 +126,6 @@ suite("importing a replay directory", () => {
       .textContent();
 
     // Nothing is re-parsed: the replays are already in IndexedDB.
-    expect(loadedCount).toBe("7");
+    expect(loadedCount).toBe("6");
   }, 180_000);
 });

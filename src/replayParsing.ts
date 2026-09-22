@@ -14,19 +14,25 @@ export type ParseResult =
   | { ok: true; replay: Replay }
   | { ok: false; reason: RejectReason };
 
+/**
+ * Every field the rest of the app indexes, groups or compares on has to be
+ * present. The player-count check returns early rather than joining the rest:
+ * the previous version read `players[1]` after that check had already failed,
+ * so a one-player replay threw instead of returning false.
+ */
 export const isReplayValid = (replay: Replay) => {
-  let isValid = true;
-  if (replay.name === "") isValid = false;
-  if (replay.path === "") isValid = false;
-  if (replay.date === "") isValid = false;
-  if (replay.players.length !== 2) isValid = false;
-  if (replay.winnerConnectCode === "") isValid = false;
-  if (replay.players[0].connectCode === "") isValid = false;
-  if (replay.players[0].characterId === "") isValid = false;
-  if (replay.players[1].connectCode === "") isValid = false;
-  if (replay.players[1].characterId === "") isValid = false;
-  if (replay.stageId === "") isValid = false;
-  return isValid;
+  if (replay.players.length !== 2) return false;
+
+  return (
+    replay.name !== "" &&
+    replay.path !== "" &&
+    replay.date !== "" &&
+    replay.stageId !== "" &&
+    replay.winnerConnectCode !== "" &&
+    replay.players.every(
+      (player) => player.connectCode !== "" && player.characterId !== "",
+    )
+  );
 };
 
 export const tryGetWinner = (game: SlippiGame) => {

@@ -23,6 +23,7 @@ export type KeyValueStore = {
   getItem<T>(key: string): Promise<T | null>;
   setItem<T>(key: string, value: T): Promise<T>;
   keys(): Promise<string[]>;
+  removeItem(key: string): Promise<void>;
   length(): Promise<number>;
   iterate<T, U>(
     iteratee: (value: T, key: string, iterationNumber: number) => U | void,
@@ -34,6 +35,13 @@ export type ReplayStores = {
   badReplaysStore: KeyValueStore;
 };
 
+/**
+ * Legacy. Replays used to be written alongside a pointer at this key naming the
+ * most recently inserted one, which meant the pointer was counted as a replay
+ * and handed to anything iterating the store as though it were one. Nothing
+ * writes or reads it any more; `deleteLegacyLatestReplayPointer` clears it out,
+ * and both can be deleted once that has run.
+ */
 export const LATEST_REPLAY_KEY = "latestReplayKey";
 
 export const createReplayRepository = (
@@ -56,14 +64,8 @@ export const createReplayRepository = (
    * so they go together and the latest-replay pointer is written once.
    */
   const insertReplays = async (replays: Replay[]) => {
-    if (replays.length === 0) return;
     await Promise.all(
       replays.map((replay) => replaysStore.setItem(replay.name, replay)),
-    );
-    // After the replays, so the pointer never names a key that is not there yet.
-    await replaysStore.setItem(
-      LATEST_REPLAY_KEY,
-      replays[replays.length - 1].name,
     );
   };
 
@@ -83,17 +85,9 @@ export const createReplayRepository = (
     return await replaysStore.getItem<Replay>(name);
   };
 
-  /**
-   * Reads the `LATEST_REPLAY_KEY` pointer. Nothing on the live path uses this
-   * any more — a finished game is looked up by the name main reports, so the
-   * stats cannot be folded from a stale pointer when a replay is rejected.
-   */
-  const selectLatestReplay = async () => {
-    const latestReplayKey = (await replaysStore.getItem(
-      LATEST_REPLAY_KEY,
-    )) as string;
-    if (!latestReplayKey) return null;
-    return (await replaysStore.getItem(latestReplayKey)) as Replay;
+  /** One-time cleanup of the legacy pointer. See `LATEST_REPLAY_KEY`. */
+  const deleteLegacyLatestReplayPointer = async () => {
+    await replaysStore.removeItem(LATEST_REPLAY_KEY);
   };
 
   const getMostCommonUser = async (
@@ -124,7 +118,13 @@ export const createReplayRepository = (
       // "no user yet", and one of them used to call .toUpperCase() on it.
       return maxKeys[0] ?? "";
     }
-    return firstUserValue > secondUserValue
+    // A tie goes to the first candidate. There is no signal left to break it
+    // with — it means both players appear in the same number of stored replays,
+    // which is exactly what happens when the whole library is games against one
+    // opponent — and the candidates arrive in the live game's port order, so
+    // picking the second was silently port-dependent. Setting the connect code
+    // in Settings is what actually resolves this case.
+    return firstUserValue >= secondUserValue
       ? possibleUsers[0]
       : possibleUsers[1];
   };
@@ -136,10 +136,9 @@ export const createReplayRepository = (
   const determineUserBasedOnLiveGame = async (
     liveGameConnectCodes: string[],
   ) => {
-    // probably overcomplicating this
-    // get user from setttings -> make sure they are in the current live replay
-    // if not, return whichever player in the current live replay has most replays
-    // if tied, return first player
+    // Prefer the configured username, as long as they are actually in this
+    // game. Otherwise take whichever player appears in more stored replays,
+    // and the first of them if that ties.
 
     const userConnectCode = (
       await settings.selectSetting("username")
@@ -162,7 +161,9 @@ export const createReplayRepository = (
   const executeCallbackOnEachReplay = async (
     callback: (replay: Replay) => void,
   ) => {
-    await replaysStore.iterate((replay: Replay, key) => callback(replay));
+    await replaysStore.iterate((replay: Replay) => {
+      callback(replay);
+    });
   };
 
   return {
@@ -171,7 +172,7 @@ export const createReplayRepository = (
     insertBadReplays,
     selectReplayCount,
     selectReplay,
-    selectLatestReplay,
+    deleteLegacyLatestReplayPointer,
     getMostCommonUser,
     selectBadReplayCount,
     determineUserBasedOnLiveGame,

@@ -57,6 +57,11 @@ an in-memory store.
 Note that `iterate` stops early if its callback returns anything other than `undefined` — give
 callbacks a block body.
 
+The `replays` store holds **only replays**. It used to also hold a `latestReplayKey` pointer,
+which made `selectReplayCount` one too high and handed a bare string to anything iterating the
+store. `deleteLegacyLatestReplayPointer`, called once from `loadReplayDirectory`, clears that row
+out of a store that still has one; it and `LATEST_REPLAY_KEY` can both be deleted once it has run.
+
 ## Stats
 
 All aggregation lives in `src/utils/statUtils.ts`. Everything funnels through one core:
@@ -135,10 +140,27 @@ These are bugs. The unit suite **asserts them as-is** so that refactors stay hon
 5. ~~`getMostCommonUser([])` returns `undefined` against an empty store~~ — **fixed.** It returns
    `""`, as its signature always promised; the startup path used to call `.toUpperCase()` on the
    `undefined` and throw, leaving a first run stuck on the loading bar.
-6. `getMostCommonUser` returns the **second** candidate on a tie, though the comment in
-   `determineUserBasedOnLiveGame` says "if tied, return first player".
+6. ~~`getMostCommonUser` returns the **second** candidate on a tie~~ — **fixed.** Candidates
+   arrive in the live game's port order, so the tie-break was decided by which port the players
+   plugged into. It takes the first now. A tie is genuinely undecidable from counts — it is what
+   a library of games against a single opponent looks like — so the real answer is a connect
+   code set in Settings.
 7. `tryGetWinner` — equal stock counts yield no winner, so the replay is filed as bad and never
    counted.
-8. `isReplayValid` — **throws** on a one-player replay instead of returning `false`, because it
-   reads `players[1]` after the length check already failed. The worker's `try/catch` turns this
-   into a bad-replay record, so the outcome matches the intent by accident.
+8. ~~`isReplayValid` **throws** on a one-player replay~~ — **fixed.** The player-count check
+   returns early instead of falling through into `players[1]`.
+
+Still live: #2 and #7. #7 is by design — see "No winner" below.
+
+## No winner
+
+`tryGetWinner` falls back to counting stocks lost only when `game.getWinners()` comes back empty,
+which for a **completed** game means slippi-js could not name one: a `NO_CONTEST` with no LRAS
+initiator, a genuine time-out draw, or — the common case here — an older replay whose `GAME_END`
+payload predates placements. A normally finished game always has unequal stocks lost, so the
+fallback resolves it.
+
+Equal stocks lost therefore means the game really has no winner, or was never finished. Filing it
+as a bad replay is the intended outcome, **not** a bug. The one consequence worth knowing: bad
+replays are skipped permanently, so an in-progress file caught by a bulk import is never counted
+unless the live watcher picks it up when the game ends — which only happens if the app stays open.

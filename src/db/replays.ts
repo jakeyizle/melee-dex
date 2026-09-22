@@ -18,7 +18,7 @@ export const {
   insertBadReplays,
   selectReplayCount,
   selectReplay,
-  selectLatestReplay,
+  deleteLegacyLatestReplayPointer,
   getMostCommonUser,
   selectBadReplayCount,
   determineUserBasedOnLiveGame,
