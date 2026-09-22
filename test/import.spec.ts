@@ -106,8 +106,6 @@ suite("importing a replay directory", () => {
     // Six are valid; Game_20250422T214211.slp is 24 frames long and is rejected.
     expect(rejectedCount).toBe("1");
 
-    // Was quirk #3: the replays store also held a "latestReplayKey" pointer,
-    // which was counted as a replay and made this report seven.
     expect(loadedCount).toBe("6");
   });
 

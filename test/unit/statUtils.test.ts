@@ -283,9 +283,9 @@ describe("getMostRecentMatches", () => {
     expect(getMostRecentMatches([makeReplay()], 0)).toEqual([]);
   });
 
-  // BUG (see src/CLAUDE.md "Known behavior quirks" #2): getMostRecentMatches sorts
-  // the caller's array in place, so the argument is reordered as a side effect.
-  // Locked in deliberately — change this test if the mutation is ever fixed.
+  // BUG: getMostRecentMatches sorts the caller's array in place, so the
+  // argument is reordered as a side effect. Pinned deliberately — see "Known
+  // bugs" in src/CLAUDE.md. Change this test if the mutation is ever fixed.
   it("mutates the array it was given", () => {
     const old = makeReplay({ date: "2025-01-01T00:00:00Z" });
     const newest = makeReplay({ date: "2025-03-01T00:00:00Z" });

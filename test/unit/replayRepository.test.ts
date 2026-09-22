@@ -88,8 +88,6 @@ describe("storing and retrieving replays", () => {
     expect(await repo.selectBadReplayCount()).toBe(2);
   });
 
-  // Was quirk #3: the replays store also held a "latestReplayKey" pointer,
-  // which length() counted as though it were a replay.
   it("counts exactly the replays that were stored", async () => {
     const { repo } = setup();
     await seedReplays(repo, [makeReplay(), makeReplay()]);
@@ -97,8 +95,8 @@ describe("storing and retrieving replays", () => {
     expect(await repo.selectReplayCount()).toBe(2);
   });
 
-  // Was quirk #4: iteration used to yield that pointer's string value as though
-  // it were a Replay, so every consumer had to defend against it.
+  // The store holds replays and nothing else, so consumers do not have to
+  // defend against non-replay values.
   it("yields only replays to callers iterating the store", async () => {
     const { repo } = setup();
     const replay = makeReplay({ name: "Game_A.slp" });
@@ -141,9 +139,8 @@ describe("working out who the user is", () => {
     expect(await repo.getMostCommonUser(["NONE#000", "ALSO#000"])).toBe(USER);
   });
 
-  // Was quirk #6: the ternary returned possibleUsers[1] on a tie, contradicting
-  // its own comment. The candidates arrive in the live game's port order, so
-  // which player you got was decided by which port they plugged into.
+  // Candidates arrive in the live game's port order, so a tie must not be
+  // broken by position — it would make the answer depend on the port used.
   it("returns the first candidate when both appear equally often", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
@@ -155,8 +152,6 @@ describe("working out who the user is", () => {
     expect(await repo.getMostCommonUser([OPPONENT, USER])).toBe(OPPONENT);
   });
 
-  // Was quirk #5: this returned undefined despite promising a string, and the
-  // empty-library startup path called .toUpperCase() on it.
   it("returns no user at all when there are no replays", async () => {
     const { repo } = setup();
 

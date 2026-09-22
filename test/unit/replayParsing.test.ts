@@ -130,8 +130,9 @@ describe("tryGetWinner", () => {
     expect(tryGetWinner(game)).toEqual([{ playerIndex: 1, position: 0 }]);
   });
 
-  // BUG (see src/CLAUDE.md "Known behavior quirks" #7): equal stock counts yield
-  // no winner at all, so such a replay is filed as bad and silently never counted.
+  // Intended: equal stocks lost means the game was a draw or never finished, so
+  // there is no winner to report and the replay is filed as bad. See "No winner"
+  // in src/CLAUDE.md.
   it("returns no winner when both players lost the same number of stocks", () => {
     const tiedGame = {
       getWinners: () => [],
@@ -190,10 +191,6 @@ describe("isReplayValid", () => {
     });
   });
 
-  // Was quirk #8: this threw rather than returning false, because it read
-  // players[1] after the length check had already failed. The outcome in
-  // production was the same — the worker's try/catch filed the replay as bad —
-  // but only by accident.
   it("rejects a replay with one player", () => {
     const onePlayer = makeReplay({ players: [makePlayer("USER#001", "0")] });
 

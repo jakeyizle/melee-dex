@@ -152,9 +152,8 @@ describe("getCurrentHeadToHeadStats — the reported record", () => {
     ).toBe(1);
   });
 
-  // Was quirk #1: the opponent branch did `playRate += ...` where the user
-  // branch did `playRate = ...`, so a character spanning several matchup rows
-  // accumulated its rate and could report over 100%.
+  // A character appears in one matchup row per character it faced, so its usage
+  // has to be totalled across them rather than accumulated per row.
   it("counts an opponent character once when it recurs across matchups", () => {
     // Two matchup rows both carry opponent character "9": (user 0 vs 9) and (user 2 vs 9).
     const stats = buildStats(
