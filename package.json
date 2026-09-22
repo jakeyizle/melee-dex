@@ -16,8 +16,10 @@
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "preview": "vite preview",
-    "pretest": "vite build --mode=test",
-    "test": "vitest run"
+    "test": "vitest run --config vitest.unit.config.ts",
+    "test:watch": "vitest --config vitest.unit.config.ts",
+    "pretest:e2e": "vite build --mode=test",
+    "test:e2e": "vitest run"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

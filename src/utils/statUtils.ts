@@ -24,21 +24,38 @@ export const getMostRecentMatches = (
   return sortedReplays.slice(0, numberOfReplays);
 };
 
-export const getStats = async (userConnectCode: string): Promise<FullStats> => {
-  const fullStats: FullStats = {
-    stats: {
-      overallStat: {
-        totalCount: 0,
-        winCount: 0,
-        lossCount: 0,
-        winRate: 0,
-      },
-      stageStats: [],
-      matchupStats: [],
-      matchupAndStageStats: [],
+export const createEmptyFullStats = (): FullStats => ({
+  stats: {
+    overallStat: {
+      totalCount: 0,
+      winCount: 0,
+      lossCount: 0,
+      winRate: 0,
     },
-    opponentSpecificStats: [],
-  };
+    stageStats: [],
+    matchupStats: [],
+    matchupAndStageStats: [],
+  },
+  opponentSpecificStats: [],
+});
+
+/**
+ * Pure fold over a collection of replays. `getStats` streams out of IndexedDB
+ * instead of calling this, to avoid materializing an entire replay library.
+ */
+export const buildStats = (
+  replays: Iterable<Replay>,
+  userConnectCode: string,
+): FullStats => {
+  const fullStats = createEmptyFullStats();
+  for (const replay of replays) {
+    getStatsFromReplay(replay, userConnectCode, fullStats);
+  }
+  return fullStats;
+};
+
+export const getStats = async (userConnectCode: string): Promise<FullStats> => {
+  const fullStats = createEmptyFullStats();
   await executeCallbackOnEachReplay((replay) =>
     getStatsFromReplay(replay, userConnectCode, fullStats),
   );
@@ -46,7 +63,7 @@ export const getStats = async (userConnectCode: string): Promise<FullStats> => {
   return fullStats;
 };
 
-const getStatsFromReplay = (
+export const getStatsFromReplay = (
   replay: Replay,
   userConnectCode: string,
   fullStats: FullStats,
@@ -249,11 +266,16 @@ const updateFirstAndLastMatchDate = (
   }
 };
 
-export const updateStatsWithReplay = async (
+/**
+ * Folds a single replay into an existing FullStats, in place. This is the
+ * incremental path taken for live games; `buildStats` is the batch path.
+ * The two must agree — see test/unit/statUtils.test.ts.
+ */
+export const applyReplayToStats = (
   fullStats: FullStats,
+  replay: Replay | null,
   userConnectCode: string,
 ) => {
-  const replay = await selectLatestReplay();
   if (
     !replay ||
     !replay.players.some((player) => player.connectCode === userConnectCode)
@@ -261,6 +283,14 @@ export const updateStatsWithReplay = async (
     return;
   getStatsFromReplay(replay, userConnectCode, fullStats);
   return fullStats;
+};
+
+export const updateStatsWithReplay = async (
+  fullStats: FullStats,
+  userConnectCode: string,
+) => {
+  const replay = await selectLatestReplay();
+  return applyReplayToStats(fullStats, replay, userConnectCode);
 };
 
 export const getCurrentHeadToHeadStats = (
