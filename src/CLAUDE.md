@@ -45,6 +45,10 @@ re-renders them — match that pattern or introduce selectors deliberately, don'
 `newStatInfo: FullStats` holds the aggregated stats. The name is historical — the `statInfo`
 field it replaced is gone.
 
+A rejected replay is stored as `{ path, reason }` under its filename; rows written before the
+reason existed are a bare path string, which `selectBadReplayReasons` counts as `unknown` rather
+than skipping, so the breakdown still adds up to `selectBadReplayCount`.
+
 Settings keys are `replayDirectory`, `username` and `schemaVersion`. `schemaVersion` drives the
 one-time **backfill**: when `needsReplayBackfill()` says the stored replays predate
 `REPLAY_SCHEMA_VERSION`, `loadReplayDirectory` passes an *empty* `existingReplayNames`, so every
@@ -136,6 +140,10 @@ The scan is the dominant cost again, which is the right place for it: it is one 
 IndexedDB and it is what `selectRecentReplaysAgainst` also pays. Measure before optimizing either
 further — `test/unit/statUtils.test.ts` asserts the incremental and batch paths agree, which is
 what makes changes here safe.
+
+Every `Stat` also accumulates `totalFrames`, the game time counted into that bucket at 60fps.
+Replays stored before `lastFrame` existed contribute nothing, so an old library reads as zero
+rather than as a wrong number.
 
 `Stats` = overall + per-mode + per-stage + per-matchup + per-matchup-and-stage. `overallStat` is
 the ranked and unranked `modeStats` rows combined, so the breakdown is always derivable and never

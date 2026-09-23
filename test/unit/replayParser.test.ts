@@ -114,8 +114,9 @@ describe("parsing a batch", () => {
     const results = parse([TOO_SHORT]);
 
     expect(results.replays).toEqual([]);
+    // The reason travels with it, so the app can say *why* later.
     expect(results.badReplays).toEqual([
-      { name: TOO_SHORT.name, path: TOO_SHORT.path },
+      { name: TOO_SHORT.name, path: TOO_SHORT.path, reason: "too-short" },
     ]);
   });
 
@@ -125,7 +126,7 @@ describe("parsing a batch", () => {
     const results = parse([MISSING, VALID]);
 
     expect(results.badReplays).toEqual([
-      { name: MISSING.name, path: MISSING.path },
+      { name: MISSING.name, path: MISSING.path, reason: "unreadable" },
     ]);
     expect(results.replays).toHaveLength(1);
     expect(results.replays[0].name).toBe(VALID.name);

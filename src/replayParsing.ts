@@ -8,7 +8,12 @@ export type RejectReason =
   | "missing-settings-or-start-time"
   | "too-short"
   | "no-winner"
-  | "invalid-replay";
+  | "invalid-replay"
+  /** Threw while being read: a partial write, a corrupt file, or not a replay at all. */
+  | "unreadable";
+
+/** A file that will not be imported, and why. */
+export type RejectedReplay = ReplayFileInfo & { reason: RejectReason };
 
 export type ParseResult =
   | { ok: true; replay: Replay }

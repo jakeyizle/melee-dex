@@ -1,4 +1,5 @@
 import { SettingsRepository } from "./settingsRepository";
+import type { RejectReason, RejectedReplay } from "../replayParsing";
 
 export type ReplayPlayer = {
   connectCode: string;
@@ -40,6 +41,7 @@ export type KeyValueStore = {
   setItem<T>(key: string, value: T): Promise<T>;
   keys(): Promise<string[]>;
   removeItem(key: string): Promise<void>;
+  clear(): Promise<void>;
   length(): Promise<number>;
   iterate<T, U>(
     iteratee: (value: T, key: string, iterationNumber: number) => U | void,
@@ -85,11 +87,40 @@ export const createReplayRepository = (
     );
   };
 
-  const insertBadReplays = async (
-    badReplays: { name: string; path: string }[],
-  ) => {
+  /**
+   * Rejected replays, stored with *why* they were rejected.
+   *
+   * Older versions stored the path alone, as a bare string. Those rows are
+   * still valid and simply have no reason — see `selectBadReplayReasons`.
+   */
+  const insertBadReplays = async (badReplays: RejectedReplay[]) => {
     await Promise.all(
-      badReplays.map(({ name, path }) => badReplaysStore.setItem(name, path)),
+      badReplays.map(({ name, path, reason }) =>
+        badReplaysStore.setItem(name, { path, reason }),
+      ),
+    );
+  };
+
+  /**
+   * How many replays were rejected for each reason, commonest first.
+   *
+   * Tolerates rows written before the reason was recorded — a bare path string
+   * — by counting them as unknown rather than skipping them, so the totals
+   * still add up to `selectBadReplayCount`.
+   */
+  const selectBadReplayReasons = async (): Promise<
+    { reason: RejectReason | "unknown"; count: number }[]
+  > => {
+    const counts = new Map<RejectReason | "unknown", number>();
+    await badReplaysStore.iterate((value: unknown) => {
+      const reason =
+        typeof value === "object" && value !== null && "reason" in value
+          ? ((value as { reason: RejectReason }).reason ?? "unknown")
+          : "unknown";
+      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+    });
+    return Array.from(counts, ([reason, count]) => ({ reason, count })).sort(
+      (a, b) => b.count - a.count,
     );
   };
 
@@ -99,6 +130,18 @@ export const createReplayRepository = (
 
   const selectReplay = async (name: string) => {
     return await replaysStore.getItem<Replay>(name);
+  };
+
+  /**
+   * Empties the library, both the accepted replays and the rejected ones.
+   *
+   * Used when the replay directory changes: the stored replays describe games
+   * found under the *old* directory, and leaving them would silently fold two
+   * libraries into one set of statistics.
+   */
+  const deleteAllReplays = async () => {
+    await replaysStore.clear();
+    await badReplaysStore.clear();
   };
 
   /** One-time cleanup of the legacy pointer. See `LATEST_REPLAY_KEY`. */
@@ -249,8 +292,10 @@ export const createReplayRepository = (
     selectAllReplayNames,
     insertReplays,
     insertBadReplays,
+    selectBadReplayReasons,
     selectReplayCount,
     selectReplay,
+    deleteAllReplays,
     deleteLegacyLatestReplayPointer,
     getMostCommonUser,
     getUserCandidates,

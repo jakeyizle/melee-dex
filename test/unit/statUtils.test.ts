@@ -48,6 +48,7 @@ describe("buildStats — overall record", () => {
       winCount: 0,
       lossCount: 0,
       winRate: 0,
+      totalFrames: 0,
     });
     expect(stats.opponentSpecificStats).toEqual([]);
   });

@@ -59,7 +59,8 @@ Renderer → main (`ipcMain.handle`): `get-app-version`, `check-for-updates`, `s
 `begin-loading-replays` (returns whether an import started), `replays-inserted`.
 
 Main → main renderer: `update-ready`, `update-replay-load-progress`, `live-replay-loaded`,
-`insert-parsed-replays`, `end-loading-replays`, `update-stats` (`{ replayName }`).
+`insert-parsed-replays`, `end-loading-replays`, `update-stats` (`{ replayName }`),
+`replay-directory-unreadable` (`{ replayDirectory }`).
 
 Main ↔ worker (`utilityProcess` messages, not `ipcMain`): `parse` out, `ready` / `parsed` back.
 
@@ -112,6 +113,8 @@ card. Nothing is faked there but the folder picker.
   is a backslash-separated relative path. A replay stored under the wrong name can never be
   matched by the import, so it would be re-imported on every launch. Do not shadow the `path`
   module with a local named `path` in that handler.
+- `ingestedLiveFiles` is capped at `MAX_INGESTED_LIVE_FILES` and drops its oldest entry, since
+  `Set` iterates in insertion order. It only exists to spot repeats, which arrive moments apart.
 - `fs.watch` fires on partial writes, and the handlers wrap everything in bare `try {} catch {}`.
   Live-detection failures are therefore completely silent — add logging before concluding the
   watcher is not firing. `listenForReplayFile` attaches no watcher at all if the directory does
@@ -120,7 +123,14 @@ card. Nothing is faked there but the folder picker.
   stage, no winner) go to the `badReplays` store and are **permanently skipped** on every later
   import. A file still being written when a bulk import reads it is therefore only counted if the
   live watcher picks it up when the game ends.
-- The updater sets `autoUpdater.forceDevUpdateConfig = true` unconditionally, so in dev it reads
-  `dev-app-update.yml` (localhost:5500). `Layout.tsx` triggers `check-for-updates` on mount.
-  CI (`.github/workflows/build.yml`) only publishes on `v*` tags, windows-latest.
+- The updater runs **only in a packaged app**: `forceDevUpdateConfig` is left at its default, so
+  `isUpdaterActive()` is false in dev and the check is skipped rather than reaching for a
+  `dev-app-update.yml` that no longer exists. `Layout.tsx` triggers `check-for-updates` on mount;
+  the handler awaits and catches, because an unreachable update server is routine and must never
+  be fatal. CI (`.github/workflows/build.yml`) only publishes on `v*` tags, windows-latest, and
+  its artifact names track `productName`.
+- `windowState.ts` persists size and position to `window-state.json` in `userData`. It refuses to
+  restore a window smaller than `MIN_WIDTH`/`MIN_HEIGHT`, or one positioned on a monitor that is
+  no longer attached — that failure looks exactly like the app not starting. It saves
+  `getNormalBounds()`, so a maximized window remembers the size to restore *to*.
 - `vite.config.ts` `rmSync`s `dist-electron` every time the config loads.

@@ -1,5 +1,9 @@
 import { createRequire } from "node:module";
-import { parseGameToReplay, ReplayFileInfo } from "../../src/replayParsing";
+import {
+  parseGameToReplay,
+  ReplayFileInfo,
+  RejectedReplay,
+} from "../../src/replayParsing";
 import type { Replay } from "../../src/db/replays";
 import type { ParseRequest, ParseResults } from "./protocol";
 
@@ -13,7 +17,7 @@ const { SlippiGame } = require("@slippi/slippi-js");
 
 const parseBatch = (files: ReplayFileInfo[]): ParseResults => {
   const replays: Replay[] = [];
-  const badReplays: ReplayFileInfo[] = [];
+  const badReplays: RejectedReplay[] = [];
 
   for (const file of files) {
     try {
@@ -21,10 +25,12 @@ const parseBatch = (files: ReplayFileInfo[]): ParseResults => {
       if (result.ok) {
         replays.push(result.replay);
       } else {
-        badReplays.push({ name: file.name, path: file.path });
+        badReplays.push({ ...file, reason: result.reason });
       }
     } catch (_e) {
-      badReplays.push({ name: file.name, path: file.path });
+      // Anything that throws is unreadable: a partial write, a corrupt file, or
+      // something that is not a replay at all.
+      badReplays.push({ ...file, reason: "unreadable" });
     }
   }
 

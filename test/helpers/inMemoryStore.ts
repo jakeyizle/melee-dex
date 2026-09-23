@@ -20,6 +20,9 @@ export const createInMemoryStore = (
     async removeItem(key: string): Promise<void> {
       data.delete(key);
     },
+    async clear(): Promise<void> {
+      data.clear();
+    },
     async keys(): Promise<string[]> {
       return Array.from(data.keys());
     },

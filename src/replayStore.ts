@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+  deleteAllReplays,
   deleteLegacyLatestReplayPointer,
   getUserCandidates,
   identifyUserFromLiveGame,
@@ -10,6 +11,7 @@ import {
   selectBadReplayCount,
   selectReplayCount,
 } from "@/db/replays";
+import type { RejectedReplay } from "@/replayParsing";
 import {
   CurrentReplayInfo,
   FullStats,
@@ -48,6 +50,10 @@ type ReplayStore = {
   newStatInfo: FullStats | null;
   /** Whether the import in flight is a schema backfill. See `loadReplayDirectory`. */
   isBackfilling: boolean;
+  /** The directory the last load was asked for, so a rescan needs no argument. */
+  replayDirectory: string;
+  /** Set when main could not read the replay directory at all. */
+  replayDirectoryError: string | null;
   /** Connect codes offered for the user to identify themselves. Empty once one is known. */
   userCandidates: UserCandidate[];
   /** The last few games against the current opponent, newest first. Queried per game. */
@@ -65,6 +71,9 @@ type ReplayStore = {
 
   // Actions
   loadReplayDirectory: (replayDirectory: string) => void;
+  /** Re-reads the configured directory on demand, for a game the watcher missed. */
+  rescanReplayDirectory: () => void;
+  clearLibrary: () => Promise<void>;
   confirmUserConnectCode: (connectCode: string) => Promise<void>;
   handleLiveReplay: (args: {
     filename: string;
@@ -78,6 +87,8 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
   currentLiveFileName: "",
   newStatInfo: null,
   isBackfilling: false,
+  replayDirectory: "",
+  replayDirectoryError: null,
   userCandidates: [],
   recentReplays: [],
   userConnectCode: "",
@@ -100,6 +111,9 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
     // re-parsed and overwrites the row stored for it, which is the only way to
     // fill in fields that cannot be derived from what was stored. Rows whose
     // files have since been deleted keep their old shape and stay valid.
+    // A previous attempt may have failed; this one gets to answer for itself.
+    set({ replayDirectory, replayDirectoryError: null });
+
     const isBackfilling = await needsReplayBackfill();
     const existingReplayNames = isBackfilling
       ? []
@@ -117,6 +131,31 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
     // load — a directory that has been moved, or one with nothing in it — must
     // leave the backfill outstanding for the next launch.
     if (hasStarted) set({ isLoadingReplays: true, isBackfilling });
+  },
+
+  rescanReplayDirectory: () => {
+    void get().loadReplayDirectory(get().replayDirectory);
+  },
+
+  /**
+   * Throws the imported library away, for when the replay directory changes.
+   *
+   * The stored replays describe games found under the old directory. Keeping
+   * them would fold two libraries into one set of statistics, and the user has
+   * no way to tell which games came from where.
+   */
+  clearLibrary: async () => {
+    await deleteAllReplays();
+    set({
+      newStatInfo: null,
+      userCandidates: [],
+      totalReplayCount: 0,
+      totalBadReplayCount: 0,
+      currentReplayInfo: null,
+      currentLiveFileName: "",
+      headToHeadStats: null,
+      recentReplays: [],
+    });
   },
 
   confirmUserConnectCode: async (connectCode) => {
@@ -207,7 +246,7 @@ export const setupReplayStoreIpcListeners = () => {
       token: number;
       count: number;
       replays: Replay[];
-      badReplays: { name: string; path: string }[];
+      badReplays: RejectedReplay[];
     };
 
     pendingWrites = pendingWrites
@@ -225,6 +264,12 @@ export const setupReplayStoreIpcListeners = () => {
 
   // Awaited: identifying the user from the live game reads the library, so the
   // state this publishes lands several ticks after the message arrives.
+  window.ipcRenderer.on("replay-directory-unreadable", (_event, args) => {
+    const replayDirectory = (args as { replayDirectory?: string } | undefined)
+      ?.replayDirectory;
+    setState({ replayDirectoryError: replayDirectory || "" });
+  });
+
   window.ipcRenderer.on("live-replay-loaded", async (_event, args) => {
     const { handleLiveReplay } = getState();
     await handleLiveReplay(args);

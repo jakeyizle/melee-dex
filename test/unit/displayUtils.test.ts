@@ -1,5 +1,10 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { getTimeString, getPercentageString } from "@/utils/displayUtils";
+import {
+  getTimeString,
+  getPercentageString,
+  getDurationString,
+  getPlaytimeString,
+} from "@/utils/displayUtils";
 
 /**
  * `getTimeString` appears on every card that mentions a date, and its output
@@ -99,5 +104,53 @@ describe("getPercentageString", () => {
     expect(getPercentageString(50)).toBe("50%");
     expect(getPercentageString(0)).toBe("0%");
     expect(getPercentageString(100)).toBe("100%");
+  });
+});
+
+describe("getDurationString", () => {
+  const minutes = (count: number) => count * 60 * 60;
+
+  it("reads a frame count as minutes and seconds", () => {
+    expect(getDurationString(minutes(3) + 42 * 60)).toBe("3:42");
+    expect(getDurationString(minutes(1))).toBe("1:00");
+    expect(getDurationString(9 * 60)).toBe("0:09");
+  });
+
+  it("pads the seconds so times line up in a column", () => {
+    expect(getDurationString(minutes(2) + 5 * 60)).toBe("2:05");
+  });
+
+  // Replays stored before lastFrame existed have none, and "0:00" would read
+  // as a real game that lasted no time at all.
+  it("says nothing rather than zero when there is no length recorded", () => {
+    expect(getDurationString(0)).toBe("-");
+    expect(getDurationString(null)).toBe("-");
+    expect(getDurationString(undefined)).toBe("-");
+    expect(getDurationString(-1)).toBe("-");
+  });
+
+  it("keeps counting in minutes past an hour", () => {
+    expect(getDurationString(minutes(75))).toBe("75:00");
+  });
+});
+
+describe("getPlaytimeString", () => {
+  const hours = (count: number) => count * 60 * 60 * 60;
+
+  it("uses minutes below an hour", () => {
+    expect(getPlaytimeString(45 * 60 * 60)).toBe("45 min");
+  });
+
+  it("uses hours and minutes above one", () => {
+    expect(getPlaytimeString(hours(2) + 30 * 60 * 60)).toBe("2 hr 30 min");
+  });
+
+  it("leaves the minutes off when there are none", () => {
+    expect(getPlaytimeString(hours(3))).toBe("3 hr");
+  });
+
+  it("says nothing rather than zero for a library with no lengths", () => {
+    expect(getPlaytimeString(0)).toBe("-");
+    expect(getPlaytimeString(undefined)).toBe("-");
   });
 });

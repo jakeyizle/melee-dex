@@ -165,6 +165,70 @@ describe("working out who the user is", () => {
   });
 });
 
+describe("selectBadReplayReasons", () => {
+  it("counts the rejections by reason, commonest first", async () => {
+    const { repo } = setup();
+    await repo.insertBadReplays([
+      { name: "a.slp", path: "C:/a.slp", reason: "too-short" },
+      { name: "b.slp", path: "C:/b.slp", reason: "too-short" },
+      { name: "c.slp", path: "C:/c.slp", reason: "not-two-human-players" },
+    ]);
+
+    expect(await repo.selectBadReplayReasons()).toEqual([
+      { reason: "too-short", count: 2 },
+      { reason: "not-two-human-players", count: 1 },
+    ]);
+  });
+
+  // Older versions stored the path alone, as a bare string. Those rows still
+  // count toward the total, so they have to be counted here too or the
+  // breakdown silently fails to add up.
+  it("counts rows written before the reason was recorded", async () => {
+    const { repo, badReplaysStore } = setup();
+    await badReplaysStore.setItem("legacy.slp", "C:/legacy.slp");
+    await repo.insertBadReplays([
+      { name: "new.slp", path: "C:/new.slp", reason: "too-short" },
+    ]);
+
+    const reasons = await repo.selectBadReplayReasons();
+
+    expect(reasons).toContainEqual({ reason: "unknown", count: 1 });
+    expect(reasons.reduce((total, row) => total + row.count, 0)).toBe(
+      await repo.selectBadReplayCount(),
+    );
+  });
+
+  it("returns nothing when nothing was rejected", async () => {
+    const { repo } = setup();
+
+    expect(await repo.selectBadReplayReasons()).toEqual([]);
+  });
+});
+
+describe("deleteAllReplays", () => {
+  it("empties both the accepted and the rejected replays", async () => {
+    const { repo } = setup();
+    await seedReplays(repo, [makeMatch({ isWin: true })]);
+    await repo.insertBadReplays([{ name: "Bad.slp", path: "C:/Slippi/Bad.slp" }]);
+
+    await repo.deleteAllReplays();
+
+    expect(await repo.selectReplayCount()).toBe(0);
+    expect(await repo.selectBadReplayCount()).toBe(0);
+    expect(await repo.selectAllReplayNames()).toEqual([]);
+  });
+
+  // Settings live in their own store; the connect code and the chosen
+  // directory have to survive a library being thrown away.
+  it("leaves settings alone", async () => {
+    const { repo, settings } = setup({ username: USER });
+
+    await repo.deleteAllReplays();
+
+    expect(await settings.selectSetting("username")).toBe(USER);
+  });
+});
+
 describe("getUserCandidates", () => {
   it("ranks connect codes by how often they appear", async () => {
     const { repo } = setup();

@@ -11,6 +11,7 @@ import { PaperDisplay } from "@/components/PaperDisplay";
 import { getCharacterNameFromId } from "@/utils/meleeIdUtils";
 import { MatchupStat, OpponentStats } from "@/types";
 import { best } from "@/utils/arrayUtils";
+import { getPlaytimeString, getDurationString } from "@/utils/displayUtils";
 
 const getPercentageString = (percentage: number | undefined) => {
   return percentage !== undefined
@@ -92,6 +93,23 @@ export const OverallStatsCard = () => {
             <PaperDisplay
               title="Number of Opponents Seen"
               value={opponentSpecificStats.length}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 6 }}>
+            <PaperDisplay
+              title="Time Played"
+              value={getPlaytimeString(overallStat.totalFrames)}
+            />
+          </Grid>
+          <Grid size={{ xs: 6 }}>
+            <PaperDisplay
+              title="Average Game Length"
+              value={getDurationString(
+                overallStat.totalCount > 0
+                  ? overallStat.totalFrames / overallStat.totalCount
+                  : 0,
+              )}
             />
           </Grid>
 

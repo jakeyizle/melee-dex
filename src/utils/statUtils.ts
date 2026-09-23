@@ -18,6 +18,7 @@ const createEmptyStat = (): Stat => ({
   winCount: 0,
   lossCount: 0,
   winRate: 0,
+  totalFrames: 0,
 });
 
 const createEmptyStats = (): Stats => ({
@@ -38,11 +39,12 @@ export const createEmptyFullStats = (): FullStats => ({
 // Counting a game
 // ---------------------------------------------------------------------------
 
-const countGame = (stat: Stat, isWin: boolean) => {
+const countGame = (stat: Stat, isWin: boolean, frames: number) => {
   stat.totalCount += 1;
   stat.winCount += isWin ? 1 : 0;
   stat.lossCount += isWin ? 0 : 1;
   stat.winRate = Math.round((stat.winCount / stat.totalCount) * 100 * 10) / 10;
+  stat.totalFrames += frames;
 };
 
 /**
@@ -55,13 +57,14 @@ const countGameInRow = <T extends Stat>(
   matches: (row: T) => boolean,
   createRow: () => T,
   isWin: boolean,
+  frames: number,
 ) => {
   let row = rows.find(matches);
   if (!row) {
     row = createRow();
     rows.push(row);
   }
-  countGame(row, isWin);
+  countGame(row, isWin, frames);
 };
 
 /** What a single game is bucketed by. */
@@ -70,19 +73,22 @@ type GameKeys = {
   opponentCharacterId: string;
   stageId: string;
   mode: ReplayMode;
+  /** Length of the game in frames; 0 for replays stored before it was recorded. */
+  frames: number;
 };
 
 /** Counts one game into every bucket of a `Stats`. */
 const countGameInStats = (stats: Stats, keys: GameKeys, isWin: boolean) => {
-  const { userCharacterId, opponentCharacterId, stageId, mode } = keys;
+  const { userCharacterId, opponentCharacterId, stageId, mode, frames } = keys;
 
-  countGame(stats.overallStat, isWin);
+  countGame(stats.overallStat, isWin, frames);
 
   countGameInRow(
     stats.modeStats,
     (row) => row.mode === mode,
     () => ({ ...createEmptyStat(), mode }),
     isWin,
+    frames,
   );
 
   countGameInRow(
@@ -90,6 +96,7 @@ const countGameInStats = (stats: Stats, keys: GameKeys, isWin: boolean) => {
     (row) => row.stageId === stageId,
     () => ({ ...createEmptyStat(), stageId }),
     isWin,
+    frames,
   );
 
   countGameInRow(
@@ -99,6 +106,7 @@ const countGameInStats = (stats: Stats, keys: GameKeys, isWin: boolean) => {
       row.opponentCharacterId === opponentCharacterId,
     () => ({ ...createEmptyStat(), userCharacterId, opponentCharacterId }),
     isWin,
+    frames,
   );
 
   countGameInRow(
@@ -114,6 +122,7 @@ const countGameInStats = (stats: Stats, keys: GameKeys, isWin: boolean) => {
       stageId,
     }),
     isWin,
+    frames,
   );
 };
 
@@ -165,6 +174,7 @@ export const applyReplayToStats = (
     // Replays stored before `mode` existed have none. Unranked is both the
     // overwhelming majority and what a replay with no matchId classifies as.
     mode: replay.mode ?? "unranked",
+    frames: replay.lastFrame ?? 0,
   };
   const isWin = replay.winnerConnectCode === userConnectCode;
 

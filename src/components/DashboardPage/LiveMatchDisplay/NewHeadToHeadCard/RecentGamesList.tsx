@@ -1,7 +1,7 @@
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import { Replay } from "@/db/replays";
 import { getCharacterNameFromId, getStageNameFromId } from "@/utils/meleeIdUtils";
-import { getTimeString } from "@/utils/displayUtils";
+import { getTimeString, getDurationString } from "@/utils/displayUtils";
 
 interface RecentGamesListProps {
   replays: Replay[];
@@ -63,6 +63,13 @@ export const RecentGamesList = ({
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {getStageNameFromId(replay.stageId)}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ minWidth: 44, textAlign: "right" }}
+            >
+              {getDurationString(replay.lastFrame)}
             </Typography>
             <Typography
               variant="body2"

@@ -22,6 +22,12 @@ export type Stat = {
   winCount: number;
   lossCount: number;
   winRate: number;
+  /**
+   * Frames of game time counted into this bucket, at 60fps. Replays stored
+   * before `lastFrame` existed contribute nothing, so a library that predates
+   * it reads as zero rather than as a wrong number.
+   */
+  totalFrames: number;
 };
 
 export type StageStat = Stat & {

@@ -1,5 +1,5 @@
 import type { Replay } from "../../src/db/replays";
-import type { ReplayFileInfo } from "../../src/replayParsing";
+import type { RejectedReplay } from "../../src/replayParsing";
 
 /**
  * The message contract between the main process and the `utilityProcess` parser
@@ -12,7 +12,7 @@ export const PARSE_BATCH_SIZE = 10;
 
 export type ParseRequest = {
   type: "parse";
-  files: ReplayFileInfo[];
+  files: { name: string; path: string }[];
 };
 
 /** Worker → main once its message listener is attached. */
@@ -22,7 +22,7 @@ export type WorkerReady = { type: "ready" };
 export type ParseResults = {
   type: "parsed";
   replays: Replay[];
-  badReplays: ReplayFileInfo[];
+  badReplays: RejectedReplay[];
   /** Files consumed, i.e. `replays.length + badReplays.length`. */
   count: number;
 };

@@ -179,6 +179,28 @@ describe("beginLoadingReplayDirectory — whether an import starts", () => {
     expect(channelsSent()).toContain("end-loading-replays");
   });
 
+  // Without this the renderer drops its progress bar and shows "Listening for
+  // Games" over a stale library — healthy-looking, and importing nothing.
+  it("tells the renderer which directory it could not read", async () => {
+    const manager = await freshManager();
+    state.readThrows = true;
+
+    await manager.beginLoadingReplayDirectory("D:/Gone", []);
+
+    expect(lastSent("replay-directory-unreadable")).toEqual({
+      replayDirectory: "D:/Gone",
+    });
+  });
+
+  it("says nothing about the directory when the read succeeds", async () => {
+    const manager = await freshManager();
+    state.replayFiles = files(3);
+
+    await manager.beginLoadingReplayDirectory("C:/Slippi", []);
+
+    expect(channelsSent()).not.toContain("replay-directory-unreadable");
+  });
+
   it("declines and ends the load when there is nothing new on disk", async () => {
     const manager = await freshManager();
     state.replayFiles = files(2);
@@ -656,6 +678,46 @@ describe("the live watcher", () => {
 
     expect(() => fire("rename", "Game_Live.slp")).not.toThrow();
     expect(channelsSent()).not.toContain("live-replay-loaded");
+  });
+
+  it("ignores a replay whose settings cannot be read", async () => {
+    const { fire } = await watch();
+    state.game.players = null as unknown as unknown[];
+
+    expect(() => fire("rename", "Game_Live.slp")).not.toThrow();
+    expect(channelsSent()).not.toContain("live-replay-loaded");
+  });
+
+  // The set only exists to spot repeats, which arrive within moments of each
+  // other. It used to keep every path a session ever saw, so it grew without
+  // limit for anyone who left the app open.
+  //
+  // Games have to be played through one at a time: the watcher stands down
+  // while a load is in flight, so firing 250 events back to back would only
+  // ever ingest the first.
+  it("does not grow without limit over a long session", async () => {
+    const { manager } = await watch();
+
+    for (let index = 0; index < 210; index++) {
+      state.watchListener!("rename", `Game_${index}.slp`);
+      const worker = workers().at(-1)!;
+      if (!worker.inFlight) continue;
+      worker.finishBatch({ replays: [makeReplay()] });
+      const payload = lastSent("insert-parsed-replays");
+      manager.onReplaysInserted({
+        token: payload.token,
+        count: payload.count,
+      });
+    }
+
+    const ingested = (
+      manager as unknown as { ingestedLiveFiles: Set<string> }
+    ).ingestedLiveFiles;
+
+    expect(ingested.size).toBeLessThanOrEqual(200);
+    // Still doing its job for anything recent, which is all it is for.
+    expect(ingested.has(path.join("C:/Slippi", "Game_209.slp"))).toBe(true);
+    expect(ingested.has(path.join("C:/Slippi", "Game_000.slp"))).toBe(false);
   });
 
   it("ignores an event with no filename", async () => {

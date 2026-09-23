@@ -238,12 +238,19 @@ describe("stats built from the real replay library", () => {
 
     const stats = buildStats(replays, OWNER);
 
-    expect(stats.stats.overallStat).toEqual({
+    expect(stats.stats.overallStat).toMatchObject({
       totalCount: 6,
       winCount: 4,
       lossCount: 2,
       winRate: 66.7,
     });
+
+    // Real frame counts from the real files, summed: the duration the library
+    // reports comes from what the parser actually read, not from a default.
+    expect(stats.stats.overallStat.totalFrames).toBe(
+      replays.reduce((total, replay) => total + (replay.lastFrame ?? 0), 0),
+    );
+    expect(stats.stats.overallStat.totalFrames).toBeGreaterThan(6 * 30 * 60);
 
     // Six different opponents, one game against each.
     expect(

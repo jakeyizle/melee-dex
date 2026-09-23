@@ -4,6 +4,12 @@ import os from "node:os";
 import { PRELOAD, VITE_DEV_SERVER_URL, INDEX_HTML } from "./vite_constants";
 import path from "node:path";
 import { PARSE_BATCH_SIZE } from "../worker/protocol";
+import {
+  loadWindowState,
+  saveWindowState,
+  MIN_WIDTH,
+  MIN_HEIGHT,
+} from "./windowState";
 
 const NUM_CORES = os.cpus().length;
 export type ReplayFile = { path: string; name: string };
@@ -55,15 +61,27 @@ export const getNumberOfWorkers = (numberOfReplays: number) => {
 };
 
 export const createMainWindow = async () => {
+  const windowState = loadWindowState();
+
   mainWindow = new BrowserWindow({
     title: "MeleeDex",
     icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
     show: false,
+    width: windowState.width,
+    height: windowState.height,
+    x: windowState.x,
+    y: windowState.y,
+    // Below this the cards have nowhere to lay out and the stage table wraps
+    // into something unreadable.
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
     webPreferences: {
       preload: PRELOAD,
     },
   });
-  mainWindow.maximize();
+  // Only if that is how it was left. The app used to maximize unconditionally,
+  // so anyone who had sized it down got it back full-screen every launch.
+  if (windowState.isMaximized) mainWindow.maximize();
 
   if (VITE_DEV_SERVER_URL) {
     // #298
@@ -85,6 +103,7 @@ export const createMainWindow = async () => {
   });
 
   mainWindow.on("close", () => {
+    if (mainWindow) saveWindowState(mainWindow);
     app.quit();
   });
 

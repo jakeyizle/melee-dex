@@ -1,5 +1,6 @@
 import { Container, Grid, Stack, Typography } from "@mui/material";
 import { useReplayStore } from "@/replayStore";
+import { ReplayDirectoryErrorCard } from "@/components/ReplayDirectoryErrorCard";
 import { useReplayDirectory } from "@/hooks/useReplayDirectory";
 import { OverallStatsCard } from "@/components/OverallStatsCard";
 import { NoReplayDirectoryCard } from "@/components/DashboardPage/NoReplayDirectoryCard";
@@ -9,6 +10,7 @@ import { NoIdentityCard } from "@/components/NoIdentityCard";
 import { NoGamesCard } from "./NoGamesCard";
 import { StageStatsTable } from "./StageStatsTable";
 import { ModeBreakdown } from "./ModeBreakdown";
+import { RejectedReplaysCard } from "./RejectedReplaysCard";
 
 /**
  * Everything about the library as a whole, readable at any time. Unlike the
@@ -16,11 +18,13 @@ import { ModeBreakdown } from "./ModeBreakdown";
  * IndexedDB when the import ends, independently of whether anyone is playing.
  */
 export const LibraryPage = () => {
-  const { isLoadingReplays, newStatInfo } = useReplayStore();
+  const { isLoadingReplays, newStatInfo, replayDirectoryError } =
+    useReplayStore();
   const { replayDirectory, hasLoadedReplayDirectory } = useReplayDirectory();
 
   if (!hasLoadedReplayDirectory) return <LoadingDashboardCard />;
   if (!replayDirectory) return <NoReplayDirectoryCard />;
+  if (replayDirectoryError !== null) return <ReplayDirectoryErrorCard />;
   if (isLoadingReplays) return <ReplayLoadInProgressCard />;
   // Null means no connect code was configured or guessed, so no stats were
   // built at all — a different problem from having stats that are empty.
@@ -34,6 +38,7 @@ export const LibraryPage = () => {
           <Stack spacing={4}>
             <OverallStatsCard />
             <ModeBreakdown stats={newStatInfo.stats} />
+            <RejectedReplaysCard />
           </Stack>
         </Grid>
         <Grid size={{ sm: 12, lg: 5 }}>

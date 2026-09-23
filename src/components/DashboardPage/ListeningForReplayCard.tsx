@@ -6,14 +6,17 @@ import {
   Paper,
   Alert,
   AlertTitle,
+  Button,
 } from "@mui/material";
 import RadarIcon from "@mui/icons-material/Radar";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { useState, useEffect } from "react";
 import { useReplayStore } from "@/replayStore";
 
 export const ListeningForReplayCard = () => {
   const [listeningDuration, setListeningDuration] = useState(0);
-  const { totalReplayCount, totalBadReplayCount } = useReplayStore();
+  const { totalReplayCount, totalBadReplayCount, rescanReplayDirectory } =
+    useReplayStore();
   useEffect(() => {
     const interval = setInterval(() => {
       setListeningDuration((prevDuration) => prevDuration + 1);
@@ -102,11 +105,23 @@ export const ListeningForReplayCard = () => {
           </Paper>
         </Box>
 
-        <Alert severity="success" sx={{ mb: 4 }}>
+        <Alert severity="success" sx={{ mb: 3 }}>
           <AlertTitle>Ready to track your next match</AlertTitle>
           Start a game in Slippi, and the dashboard will automatically update
           with live match information.
         </Alert>
+
+        {/* Games are picked up automatically, but a replay written while the
+            app was closed — or one the watcher missed — needs asking for. */}
+        <Box sx={{ textAlign: "center" }}>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={rescanReplayDirectory}
+          >
+            Check for New Replays
+          </Button>
+        </Box>
       </CardContent>
     </Card>
   );

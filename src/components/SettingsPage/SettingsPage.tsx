@@ -28,14 +28,24 @@ import { selectAllSettings, upsertSettings } from "../../db/settings";
 import { dropDB } from "@/db/stores";
 import { useReplayStore } from "@/replayStore";
 
+/**
+ * A Slippi connect code: up to four letters, a hash, then digits. Anything else
+ * matches no player, and the stats come back empty with nothing to explain it.
+ */
+const CONNECT_CODE_PATTERN = /^[A-Za-z]{1,4}#\d{1,6}$/;
+
 export const SettingsPage = () => {
   const navigate = useNavigate();
   const confirmUserConnectCode = useReplayStore(
     (state) => state.confirmUserConnectCode,
   );
+  const clearLibrary = useReplayStore((state) => state.clearLibrary);
   const [replayDirectory, setReplayDirectory] = useState<string>("");
+  /** What was configured when this page opened, to tell a change from a re-save. */
+  const [originalDirectory, setOriginalDirectory] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [directoryErrorText, setDirectoryErrorText] = useState<string>("");
+  const [connectCodeErrorText, setConnectCodeErrorText] = useState<string>("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteError, setDeleteError] = useState(false);
@@ -44,6 +54,7 @@ export const SettingsPage = () => {
     const fetchSettings = async () => {
       const { replayDirectory, username } = await selectAllSettings();
       setReplayDirectory(replayDirectory);
+      setOriginalDirectory(replayDirectory);
       setUsername(username);
     };
     fetchSettings();
@@ -82,6 +93,7 @@ export const SettingsPage = () => {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     setUsername(event.target.value);
+    setConnectCodeErrorText("");
   };
 
   /**
@@ -94,15 +106,35 @@ export const SettingsPage = () => {
    * nothing visible until the next launch.
    */
   const commitConnectCode = () => {
-    confirmUserConnectCode(username);
+    const trimmed = username.trim();
+    // Empty is allowed: a live game can settle the identity on its own.
+    if (trimmed && !CONNECT_CODE_PATTERN.test(trimmed)) {
+      setConnectCodeErrorText(
+        "That does not look like a connect code. It should be like ABCD#123.",
+      );
+      return false;
+    }
+    setConnectCodeErrorText("");
+    if (trimmed) confirmUserConnectCode(trimmed);
+    return true;
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     if (!replayDirectory) {
       setDirectoryErrorText("Please select a replay directory");
       return;
     }
-    commitConnectCode();
+    if (!commitConnectCode()) return;
+
+    // A different directory is a different library. The stored replays describe
+    // games found under the old one, and keeping them would fold two libraries
+    // into one set of statistics with no way to tell which games came from
+    // where. Navigating back re-imports from the new directory.
+    if (originalDirectory && originalDirectory !== replayDirectory) {
+      await clearLibrary();
+      setOriginalDirectory(replayDirectory);
+    }
+
     navigate("/");
   };
 
@@ -171,6 +203,8 @@ export const SettingsPage = () => {
                     value={username}
                     onChange={handleConnectCodeChange}
                     onBlur={commitConnectCode}
+                    error={!!connectCodeErrorText}
+                    helperText={connectCodeErrorText}
                   />
                 </FormControl>
                 <Typography variant="body2" color="text.secondary">

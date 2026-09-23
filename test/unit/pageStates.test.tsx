@@ -57,6 +57,7 @@ beforeEach(() => {
     loadReplayDirectory: vi.fn(),
     isLoadingReplays: false,
     isBackfilling: false,
+    replayDirectoryError: null,
     currentReplayInfo: null,
     newStatInfo: null,
     userConnectCode: USER,
@@ -218,5 +219,53 @@ describe("LiveMatchDisplay — a game with nobody identified", () => {
     renderComponent(<LiveMatchDisplay />);
 
     await waitFor(() => expect(screen.getByText("Head to Head")).toBeDefined());
+  });
+});
+
+describe("a replay directory that cannot be read", () => {
+  it("says so on the dashboard instead of listening for games", async () => {
+    useReplayStore.setState({ replayDirectoryError: "D:/Gone" });
+
+    renderComponent(<DashboardPage />);
+
+    expect(
+      await screen.findByText("Your Replay Directory Is Missing"),
+    ).toBeDefined();
+    expect(screen.queryByText("Listening for Games")).toBeNull();
+  });
+
+  it("names the folder it could not read", async () => {
+    useReplayStore.setState({ replayDirectoryError: "D:/Gone" });
+
+    renderComponent(<DashboardPage />);
+
+    expect(await screen.findByText("D:/Gone")).toBeDefined();
+  });
+
+  it("says so on the library too", async () => {
+    useReplayStore.setState({
+      replayDirectoryError: "D:/Gone",
+      newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
+    });
+
+    renderComponent(<LibraryPage />);
+
+    expect(
+      await screen.findByText("Your Replay Directory Is Missing"),
+    ).toBeDefined();
+    expect(screen.queryByText("Overall Stats")).toBeNull();
+  });
+
+  // Asking for a directory comes first: there is nothing to fail to read until
+  // one has been chosen.
+  it("asks for a directory first when none is configured", async () => {
+    selectAllSettings.mockResolvedValue({ replayDirectory: "", username: "" });
+    useReplayStore.setState({ replayDirectoryError: "" });
+
+    renderComponent(<DashboardPage />);
+
+    expect(
+      await screen.findByText("Set Up Your Replay Directory"),
+    ).toBeDefined();
   });
 });

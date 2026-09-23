@@ -4,7 +4,7 @@ import { getNumberOfWorkers, getReplayFiles, mainWindow } from "./utils";
 import { ParserWorker } from "./parserWorker";
 import { PARSE_BATCH_SIZE } from "../worker/protocol";
 import type { ParseResults } from "../worker/protocol";
-import type { ReplayFileInfo } from "../../src/replayParsing";
+import type { ReplayFileInfo, RejectedReplay } from "../../src/replayParsing";
 import { require } from "./vite_constants";
 const { SlippiGame } = require("@slippi/slippi-js");
 
@@ -30,6 +30,12 @@ export class ReplayLoadManager {
    * the same game is ingested repeatedly and counted into the stats each time.
    */
   private ingestedLiveFiles = new Set<string>();
+  /**
+   * The set only exists to spot repeats, and repeats arrive within moments of
+   * each other. Keeping every path a session ever saw meant it grew without
+   * limit for anyone who left the app open.
+   */
+  private static readonly MAX_INGESTED_LIVE_FILES = 200;
   /** Name of the replay the single-replay load actually stored, if any. */
   private loadedLiveReplayName: string | null = null;
 
@@ -64,6 +70,12 @@ export class ReplayLoadManager {
       // so the renderer drops its progress bar and still builds stats from what
       // is already in IndexedDB.
       console.error("Could not read the replay directory", error);
+      // Say so. Otherwise the renderer drops its progress bar and shows
+      // "Listening for Games" over a stale library, looking perfectly healthy
+      // while ingesting nothing at all.
+      mainWindow?.webContents.send("replay-directory-unreadable", {
+        replayDirectory,
+      });
       this.finishLoading();
       return false;
     }
@@ -171,7 +183,11 @@ export class ReplayLoadManager {
     if (lostFiles.length === 1) {
       // It was already isolated, so this one file is what killed the process.
       // Filing it as bad is both the right answer and what stops the retry loop.
-      this.sendToRenderer(null, [], lostFiles);
+      this.sendToRenderer(
+        null,
+        [],
+        lostFiles.map((file) => ({ ...file, reason: "unreadable" as const })),
+      );
     } else {
       this.isolatedFiles.unshift(...lostFiles);
     }
@@ -189,7 +205,7 @@ export class ReplayLoadManager {
   private sendToRenderer(
     worker: ParserWorker | null,
     replays: ParseResults["replays"],
-    badReplays: ReplayFileInfo[],
+    badReplays: RejectedReplay[],
   ) {
     const count = replays.length + badReplays.length;
     if (!mainWindow || mainWindow.isDestroyed()) {
@@ -283,6 +299,14 @@ export class ReplayLoadManager {
               // rather than splitting on "/". Getting this wrong means the
               // replay is stored under a name the import can never match, so it
               // is re-imported on every launch.
+              if (
+                this.ingestedLiveFiles.size >=
+                ReplayLoadManager.MAX_INGESTED_LIVE_FILES
+              ) {
+                // Sets iterate in insertion order, so this drops the oldest.
+                const oldest = this.ingestedLiveFiles.values().next().value;
+                if (oldest !== undefined) this.ingestedLiveFiles.delete(oldest);
+              }
               this.ingestedLiveFiles.add(filePath);
               this.beginLoadingReplayFile({
                 path: filePath,
@@ -291,7 +315,11 @@ export class ReplayLoadManager {
             }
 
             const settings = game.getSettings();
-            const players = settings?.players.map((player: any) => {
+            // Guarded rather than optional-chained on one line and not the
+            // next: a null here threw into the bare catch below, and the game
+            // was silently never detected.
+            if (!settings?.players) return;
+            const players = settings.players.map((player: any) => {
               return {
                 connectCode: player.connectCode,
                 name: player.displayName,

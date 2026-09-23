@@ -10,23 +10,38 @@ ipcMain.handle("get-app-version", () => {
 });
 
 // update
-let hasUpdated = false;
-ipcMain.handle("check-for-updates", (event) => {
-  if (hasUpdated) return;
-  hasUpdated = true;
+let hasCheckedForUpdates = false;
+ipcMain.handle("check-for-updates", async (event) => {
+  if (hasCheckedForUpdates) return;
+  hasCheckedForUpdates = true;
+
   const { autoUpdater } = electronUpdater;
   autoUpdater.logger = log;
   log.transports.file.level = "info";
-  autoUpdater.forceDevUpdateConfig = true;
-  autoUpdater.checkForUpdates();
 
-  autoUpdater.on("update-available", (info) => {
-    autoUpdater.downloadUpdate();
+  autoUpdater.on("update-available", () => {
+    autoUpdater.downloadUpdate().catch((error) => {
+      log.error("Could not download the update", error);
+    });
   });
 
-  autoUpdater.on("update-downloaded", (info) => {
+  autoUpdater.on("update-downloaded", () => {
     event.sender.send("update-ready");
   });
+
+  // An unreachable update server is routine — no network, GitHub down, a
+  // corporate proxy. `checkForUpdates` rejects in that case, and nothing was
+  // awaiting it, so it surfaced as an unhandled rejection in main and told
+  // nobody anything. Failing to check for updates must never be fatal.
+  autoUpdater.on("error", (error) => {
+    log.error("Update check failed", error);
+  });
+
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    log.error("Update check failed", error);
+  }
 });
 
 // settings

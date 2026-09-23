@@ -25,6 +25,7 @@ vi.mock("@/db/replays", () => ({
     isConfident: true,
   })),
   selectRecentReplaysAgainst: vi.fn(async () => []),
+  deleteAllReplays: vi.fn(async () => {}),
   selectReplay: vi.fn(async () => null),
   deleteLegacyLatestReplayPointer: vi.fn(async () => {}),
   insertReplays: vi.fn(async () => {}),
@@ -488,5 +489,66 @@ describe("a finished game updating the stats", () => {
     await ipcRenderer.emit("update-stats", finished);
 
     expect(useReplayStore.getState().newStatInfo).toBe(stats);
+  });
+});
+
+describe("a replay directory that cannot be read", () => {
+  it("records which directory failed", async () => {
+    await ipcRenderer.emit("replay-directory-unreadable", {
+      replayDirectory: "D:/Gone",
+    });
+
+    expect(useReplayStore.getState().replayDirectoryError).toBe("D:/Gone");
+  });
+
+  // The message is the only signal; main gives up silently otherwise.
+  it("records the failure even when no directory is named", async () => {
+    await ipcRenderer.emit("replay-directory-unreadable", {});
+
+    expect(useReplayStore.getState().replayDirectoryError).toBe("");
+  });
+
+  it("clears the failure when another load is attempted", async () => {
+    useReplayStore.setState({ replayDirectoryError: "D:/Gone" });
+    ipcRenderer.setInvokeResult("begin-loading-replays", true);
+
+    await useReplayStore.getState().loadReplayDirectory("C:/Slippi");
+
+    expect(useReplayStore.getState().replayDirectoryError).toBeNull();
+  });
+});
+
+describe("changing the replay directory", () => {
+  it("throws away the library and everything derived from it", async () => {
+    useReplayStore.setState({
+      newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
+      totalReplayCount: 12,
+      totalBadReplayCount: 3,
+      userCandidates: [{ connectCode: USER, appearances: 12 }],
+      currentReplayInfo: { stageId: "31", players: liveGameArgs.players },
+      recentReplays: [makeMatch({ isWin: true })],
+    });
+
+    await useReplayStore.getState().clearLibrary();
+
+    expect(db.deleteAllReplays).toHaveBeenCalledOnce();
+    expect(useReplayStore.getState()).toMatchObject({
+      newStatInfo: null,
+      totalReplayCount: 0,
+      totalBadReplayCount: 0,
+      userCandidates: [],
+      currentReplayInfo: null,
+      recentReplays: [],
+    });
+  });
+
+  // The connect code is about who the user is, not which folder they keep
+  // their replays in.
+  it("keeps the configured connect code", async () => {
+    useReplayStore.setState({ userConnectCode: USER });
+
+    await useReplayStore.getState().clearLibrary();
+
+    expect(useReplayStore.getState().userConnectCode).toBe(USER);
   });
 });
