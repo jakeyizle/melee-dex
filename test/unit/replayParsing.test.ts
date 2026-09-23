@@ -6,6 +6,7 @@ import {
   parseGameToReplay,
   tryGetWinner,
   isReplayValid,
+  getReplayMode,
   ParseResult,
 } from "@/replayParsing";
 import { buildStats } from "@/utils/statUtils";
@@ -71,6 +72,26 @@ describe("parsing real replays", () => {
     expect(replay.stageId).toBe("28");
     replay.players.forEach((p) => expect(typeof p.characterId).toBe("string"));
     expect(typeof replay.stageId).toBe("string");
+  });
+
+  it("reads mode, match id, game number and length from a modern replay", () => {
+    const replay = parseOk("Game_20250417T230155.slp");
+
+    expect(replay).toMatchObject({
+      mode: "unranked",
+      matchId: "mode.unranked-2025-04-18T03:01:45.00-3",
+      gameNumber: 1,
+    });
+    expect(replay.lastFrame).toBeGreaterThan(30 * 60);
+  });
+
+  it("treats a replay with no match id as unranked", () => {
+    // 2020, long before slp 3.14 added matchInfo.
+    const replay = parseOk("Game_20200727T230003.slp");
+
+    expect(replay.mode).toBe("unranked");
+    expect(replay.matchId).toBe("");
+    expect(replay.gameNumber).toBeNull();
   });
 
   it("always names one of the two players as the winner", () => {
@@ -243,5 +264,22 @@ describe("stats built from the real replay library", () => {
       stats.stats.stageStats.map((s) => [s.stageId, s.totalCount]),
     );
     expect(stageCounts).toEqual({ "3": 3, "8": 2, "28": 1 });
+  });
+});
+
+describe("getReplayMode", () => {
+  it("names only ranked matches as ranked", () => {
+    expect(getReplayMode("mode.ranked-2025-04-18T03:01:45.00-3")).toBe("ranked");
+  });
+
+  it("treats unranked, direct and unknown modes alike", () => {
+    expect(getReplayMode("mode.unranked-2025-04-18T03:01:45.00-3")).toBe(
+      "unranked",
+    );
+    expect(getReplayMode("mode.direct-2025-04-18T03:01:45.00-3")).toBe(
+      "unranked",
+    );
+    expect(getReplayMode("")).toBe("unranked");
+    expect(getReplayMode(undefined)).toBe("unranked");
   });
 });

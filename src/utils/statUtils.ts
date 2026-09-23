@@ -1,4 +1,9 @@
-import { executeCallbackOnEachReplay, Replay, selectReplay } from "@/db/replays";
+import {
+  executeCallbackOnEachReplay,
+  Replay,
+  ReplayMode,
+  selectReplay,
+} from "@/db/replays";
 import {
   FullStats,
   Stat,
@@ -7,16 +12,6 @@ import {
   CharacterUsageStat,
   OpponentStats,
 } from "@/types";
-
-export const getMostRecentMatches = (
-  replays: Replay[],
-  numberOfReplays: number,
-) => {
-  const sortedReplays = replays.sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
-  return sortedReplays.slice(0, numberOfReplays);
-};
 
 const createEmptyStat = (): Stat => ({
   totalCount: 0,
@@ -27,6 +22,7 @@ const createEmptyStat = (): Stat => ({
 
 const createEmptyStats = (): Stats => ({
   overallStat: createEmptyStat(),
+  modeStats: [],
   stageStats: [],
   matchupStats: [],
   matchupAndStageStats: [],
@@ -35,6 +31,7 @@ const createEmptyStats = (): Stats => ({
 export const createEmptyFullStats = (): FullStats => ({
   stats: createEmptyStats(),
   opponentSpecificStats: [],
+  opponentIndex: new Map(),
 });
 
 // ---------------------------------------------------------------------------
@@ -72,13 +69,21 @@ type GameKeys = {
   userCharacterId: string;
   opponentCharacterId: string;
   stageId: string;
+  mode: ReplayMode;
 };
 
-/** Counts one game into all four buckets of a `Stats`. */
+/** Counts one game into every bucket of a `Stats`. */
 const countGameInStats = (stats: Stats, keys: GameKeys, isWin: boolean) => {
-  const { userCharacterId, opponentCharacterId, stageId } = keys;
+  const { userCharacterId, opponentCharacterId, stageId, mode } = keys;
 
   countGame(stats.overallStat, isWin);
+
+  countGameInRow(
+    stats.modeStats,
+    (row) => row.mode === mode,
+    () => ({ ...createEmptyStat(), mode }),
+    isWin,
+  );
 
   countGameInRow(
     stats.stageStats,
@@ -110,6 +115,16 @@ const countGameInStats = (stats: Stats, keys: GameKeys, isWin: boolean) => {
     }),
     isWin,
   );
+};
+
+/**
+ * Names are how the user recognises someone, and they change — so the set is
+ * kept rather than the latest. A replay with no display name adds nothing:
+ * older replays often have none, and a blank would read as a real alias.
+ */
+const rememberName = (opponentStats: OpponentStats, name: string) => {
+  if (!name || opponentStats.knownNames.includes(name)) return;
+  opponentStats.knownNames.push(name);
 };
 
 const widenMatchDates = (opponentStats: OpponentStats, date: string) => {
@@ -147,26 +162,32 @@ export const applyReplayToStats = (
     userCharacterId: user.characterId,
     opponentCharacterId: opponent.characterId,
     stageId: replay.stageId,
+    // Replays stored before `mode` existed have none. Unranked is both the
+    // overwhelming majority and what a replay with no matchId classifies as.
+    mode: replay.mode ?? "unranked",
   };
   const isWin = replay.winnerConnectCode === userConnectCode;
 
   countGameInStats(fullStats.stats, keys, isWin);
 
-  let opponentStats = fullStats.opponentSpecificStats.find(
-    (candidate) => candidate.opponentConnectCode === opponent.connectCode,
-  );
+  let opponentStats = fullStats.opponentIndex.get(opponent.connectCode);
   if (!opponentStats) {
     opponentStats = {
       ...createEmptyStats(),
       opponentConnectCode: opponent.connectCode,
       firstMatchDate: replay.date,
       lastMatchDate: replay.date,
+      knownNames: [],
     };
+    // Pushed and indexed together, and never apart: the two hold the same
+    // object, and the index is what every lookup goes through.
     fullStats.opponentSpecificStats.push(opponentStats);
+    fullStats.opponentIndex.set(opponent.connectCode, opponentStats);
   }
 
   countGameInStats(opponentStats, keys, isWin);
   widenMatchDates(opponentStats, replay.date);
+  rememberName(opponentStats, opponent.name);
 
   return fullStats;
 };
@@ -231,6 +252,13 @@ const toCharacterUsages = (
     playRate: (playCount / gamesPlayed) * 100,
   }));
 
+/**
+ * The record in one mode. Returns a zeroed `Stat` rather than undefined, so the
+ * breakdown renders "0 (0 - 0)" from the very first launch instead of blanking.
+ */
+export const getModeStat = (stats: Stats, mode: ReplayMode): Stat =>
+  stats.modeStats.find((row) => row.mode === mode) ?? createEmptyStat();
+
 /** Narrows a `FullStats` to the single-opponent view the dashboard renders. */
 export const getCurrentHeadToHeadStats = (
   fullStats: FullStats,
@@ -245,9 +273,7 @@ export const getCurrentHeadToHeadStats = (
   );
   if (!player || !opponent) return null;
 
-  const opponentStats = fullStats.opponentSpecificStats.find(
-    (candidate) => candidate.opponentConnectCode === opponent.connectCode,
-  );
+  const opponentStats = fullStats.opponentIndex.get(opponent.connectCode);
   if (!opponentStats) return null;
 
   // One pass over the matchup rows, totalling each side's characters. The

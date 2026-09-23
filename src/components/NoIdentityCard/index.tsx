@@ -1,0 +1,1 @@
+export { NoIdentityCard } from "./NoIdentityCard";

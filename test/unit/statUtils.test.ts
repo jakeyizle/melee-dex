@@ -3,7 +3,7 @@ import {
   buildStats,
   applyReplayToStats,
   createEmptyFullStats,
-  getMostRecentMatches,
+  getModeStat,
 } from "@/utils/statUtils";
 import { makeReplay, makeMatch, makePlayer, USER, OPPONENT } from "../helpers/makeReplay";
 
@@ -259,40 +259,81 @@ describe("applyReplayToStats — the live-game path agrees with the batch path",
   });
 });
 
-describe("getMostRecentMatches", () => {
-  it("returns the newest replays first", () => {
-    const old = makeReplay({ date: "2025-01-01T00:00:00Z" });
-    const middle = makeReplay({ date: "2025-02-01T00:00:00Z" });
-    const newest = makeReplay({ date: "2025-03-01T00:00:00Z" });
+describe("ranked and unranked", () => {
+  it("splits the record by mode and keeps the overall total combined", () => {
+    const stats = buildStats(
+      [
+        makeReplay({ mode: "ranked", winnerConnectCode: USER }),
+        makeReplay({ mode: "ranked", winnerConnectCode: OPPONENT }),
+        makeReplay({ mode: "unranked", winnerConnectCode: USER }),
+      ],
+      USER,
+    );
 
-    const result = getMostRecentMatches([old, newest, middle], 2);
+    expect(getModeStat(stats.stats, "ranked")).toMatchObject({
+      totalCount: 2,
+      winCount: 1,
+      lossCount: 1,
+    });
+    expect(getModeStat(stats.stats, "unranked")).toMatchObject({
+      totalCount: 1,
+      winCount: 1,
+      lossCount: 0,
+    });
+    expect(stats.stats.overallStat.totalCount).toBe(3);
+  });
 
-    expect(result.map((r) => r.date)).toEqual([
-      "2025-03-01T00:00:00Z",
-      "2025-02-01T00:00:00Z",
+  it("counts a replay stored before the mode field existed as unranked", () => {
+    const legacy = makeReplay();
+    delete legacy.mode;
+
+    const stats = buildStats([legacy], USER);
+
+    expect(getModeStat(stats.stats, "unranked").totalCount).toBe(1);
+    expect(getModeStat(stats.stats, "ranked").totalCount).toBe(0);
+  });
+
+  it("splits each opponent's record by mode too", () => {
+    const stats = buildStats(
+      [
+        makeMatch({ isWin: true, opponent: OPPONENT }),
+        makeReplay({
+          mode: "ranked",
+          players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
+          winnerConnectCode: OPPONENT,
+        }),
+      ],
+      USER,
+    );
+
+    const [opponentStats] = stats.opponentSpecificStats;
+    expect(getModeStat(opponentStats, "unranked").winCount).toBe(1);
+    expect(getModeStat(opponentStats, "ranked").lossCount).toBe(1);
+  });
+});
+
+describe("opponent name history", () => {
+  const withName = (name: string) =>
+    makeReplay({
+      players: [makePlayer(USER, "0"), { ...makePlayer(OPPONENT, "9"), name }],
+      winnerConnectCode: USER,
+    });
+
+  it("keeps every name an opponent has played under, first seen first", () => {
+    const stats = buildStats(
+      [withName("jakeyizle"), withName("newtag"), withName("jakeyizle")],
+      USER,
+    );
+
+    expect(stats.opponentSpecificStats[0].knownNames).toEqual([
+      "jakeyizle",
+      "newtag",
     ]);
   });
 
-  it("returns everything when asked for more than it has", () => {
-    const replays = [makeReplay(), makeReplay()];
+  it("ignores replays that carry no display name", () => {
+    const stats = buildStats([withName(""), withName("jakeyizle")], USER);
 
-    expect(getMostRecentMatches(replays, 10)).toHaveLength(2);
-  });
-
-  it("returns nothing when asked for zero", () => {
-    expect(getMostRecentMatches([makeReplay()], 0)).toEqual([]);
-  });
-
-  // BUG: getMostRecentMatches sorts the caller's array in place, so the
-  // argument is reordered as a side effect. Pinned deliberately — see "Known
-  // bugs" in src/CLAUDE.md. Change this test if the mutation is ever fixed.
-  it("mutates the array it was given", () => {
-    const old = makeReplay({ date: "2025-01-01T00:00:00Z" });
-    const newest = makeReplay({ date: "2025-03-01T00:00:00Z" });
-    const input = [old, newest];
-
-    getMostRecentMatches(input, 1);
-
-    expect(input[0]).toBe(newest);
+    expect(stats.opponentSpecificStats[0].knownNames).toEqual(["jakeyizle"]);
   });
 });

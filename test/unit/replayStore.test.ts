@@ -14,8 +14,17 @@ vi.mock("@/db/replays", () => ({
   selectReplayCount: vi.fn(async () => 12),
   selectBadReplayCount: vi.fn(async () => 3),
   getMostCommonUser: vi.fn(async () => USER),
-  determineUserBasedOnLiveGame: vi.fn(async () => USER),
-  attemptGetUser: vi.fn(async () => USER),
+  getUserCandidates: vi.fn(async () => [
+    { connectCode: USER, appearances: 12 },
+    { connectCode: OPPONENT, appearances: 4 },
+  ]),
+  // Confident by default: the library tells the two players apart. The
+  // identity tests below override it for the coin-flip case.
+  identifyUserFromLiveGame: vi.fn(async () => ({
+    connectCode: USER,
+    isConfident: true,
+  })),
+  selectRecentReplaysAgainst: vi.fn(async () => []),
   selectReplay: vi.fn(async () => null),
   deleteLegacyLatestReplayPointer: vi.fn(async () => {}),
   insertReplays: vi.fn(async () => {}),
@@ -24,12 +33,16 @@ vi.mock("@/db/replays", () => ({
 }));
 
 vi.mock("@/db/settings", () => ({
-  updateUsernameIfEmpty: vi.fn(
-    async (suggestUsername: () => Promise<string>) => await suggestUsername(),
-  ),
+  selectSetting: vi.fn(async () => ""),
+  upsertSetting: vi.fn(async () => {}),
+  // Up to date by default, so an ordinary import is the case under test. The
+  // backfill tests below override it.
+  needsReplayBackfill: vi.fn(async () => false),
+  markReplayBackfillDone: vi.fn(async () => {}),
 }));
 
 const db = await import("@/db/replays");
+const settings = await import("@/db/settings");
 const { useReplayStore, setupReplayStoreIpcListeners } = await import(
   "@/replayStore"
 );
@@ -90,6 +103,59 @@ describe("starting a replay import", () => {
   });
 });
 
+describe("backfilling replays after a schema change", () => {
+  it("skips nothing, so every file on disk is read again", async () => {
+    vi.mocked(settings.needsReplayBackfill).mockResolvedValueOnce(true);
+    ipcRenderer.setInvokeResult("begin-loading-replays", true);
+
+    await useReplayStore.getState().loadReplayDirectory("C:/Slippi");
+
+    expect(ipcRenderer.invocations).toEqual([
+      {
+        channel: "begin-loading-replays",
+        args: { replayDirectory: "C:/Slippi", existingReplayNames: [] },
+      },
+    ]);
+    expect(useReplayStore.getState().isBackfilling).toBe(true);
+  });
+
+  // The directory may have been moved, in which case main declines and nothing
+  // was re-read. Marking it done here would lose the backfill for good.
+  it("stays outstanding when the import never started", async () => {
+    vi.mocked(settings.needsReplayBackfill).mockResolvedValueOnce(true);
+    ipcRenderer.setInvokeResult("begin-loading-replays", false);
+
+    await useReplayStore.getState().loadReplayDirectory("C:/Slippi");
+    await ipcRenderer.emit("end-loading-replays", {});
+
+    expect(useReplayStore.getState().isBackfilling).toBe(false);
+    expect(settings.markReplayBackfillDone).not.toHaveBeenCalled();
+  });
+
+  it("is marked done once the import it started finishes", async () => {
+    vi.mocked(settings.needsReplayBackfill).mockResolvedValueOnce(true);
+    ipcRenderer.setInvokeResult("begin-loading-replays", true);
+
+    await useReplayStore.getState().loadReplayDirectory("C:/Slippi");
+    await ipcRenderer.emit("end-loading-replays", {});
+
+    expect(settings.markReplayBackfillDone).toHaveBeenCalled();
+    expect(useReplayStore.getState().isBackfilling).toBe(false);
+  });
+
+  it("leaves an ordinary import skipping what it already has", async () => {
+    ipcRenderer.setInvokeResult("begin-loading-replays", true);
+
+    await useReplayStore.getState().loadReplayDirectory("C:/Slippi");
+    await ipcRenderer.emit("end-loading-replays", {});
+
+    expect(ipcRenderer.invocations[0].args).toMatchObject({
+      existingReplayNames: ["Existing.slp"],
+    });
+    expect(settings.markReplayBackfillDone).not.toHaveBeenCalled();
+  });
+});
+
 describe("import progress", () => {
   it("reflects progress reported by the main process", async () => {
     await ipcRenderer.emit("update-replay-load-progress", {
@@ -106,7 +172,9 @@ describe("import progress", () => {
     });
   });
 
-  it("clears progress and publishes the final counts and stats when the import ends", async () => {
+  it("clears progress and publishes the final counts when the import ends", async () => {
+    vi.mocked(settings.selectSetting).mockResolvedValueOnce(USER);
+
     await ipcRenderer.emit("update-replay-load-progress", {
       currentReplaysLoaded: 40,
       totalReplaysToLoad: 100,
@@ -125,6 +193,113 @@ describe("import progress", () => {
       userConnectCode: USER,
     });
     expect(useReplayStore.getState().newStatInfo).not.toBeNull();
+    expect(useReplayStore.getState().userCandidates).toEqual([]);
+  });
+});
+
+describe("recent games against the live opponent", () => {
+  it("queries them for the opponent, not the user", async () => {
+    useReplayStore.setState({ userConnectCode: USER });
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+
+    expect(db.selectRecentReplaysAgainst).toHaveBeenCalledWith(OPPONENT, 5);
+  });
+
+  it("publishes what the query returns", async () => {
+    const history = [makeMatch({ isWin: true })];
+    useReplayStore.setState({ userConnectCode: USER });
+    vi.mocked(db.selectRecentReplaysAgainst).mockResolvedValueOnce(history);
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+
+    expect(useReplayStore.getState().recentReplays).toEqual(history);
+  });
+
+  // The scan takes hundreds of milliseconds over a large library. If the next
+  // game starts first, the list it returns is for the previous opponent.
+  it("drops a result that arrives after the next game has started", async () => {
+    useReplayStore.setState({ userConnectCode: USER });
+    vi.mocked(db.selectRecentReplaysAgainst).mockImplementationOnce(async () => {
+      useReplayStore.setState({ currentLiveFileName: "Game_Newer.slp" });
+      return [makeMatch({ isWin: true })];
+    });
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+
+    expect(useReplayStore.getState().recentReplays).toEqual([]);
+  });
+});
+
+describe("working out who the user is", () => {
+  // Rule A. The configured code is the only thing trusted without confirmation.
+  it("uses the configured connect code and builds stats against it", async () => {
+    vi.mocked(settings.selectSetting).mockResolvedValueOnce(USER);
+
+    await ipcRenderer.emit("end-loading-replays", {});
+
+    expect(useReplayStore.getState().userConnectCode).toBe(USER);
+    expect(useReplayStore.getState().newStatInfo).not.toBeNull();
+    expect(db.getUserCandidates).not.toHaveBeenCalled();
+  });
+
+  // Rule C. Nothing configured and no game played yet: the app has a good guess
+  // but offers it instead of storing it, and builds no stats in the meantime.
+  it("offers candidates rather than guessing when nothing is configured", async () => {
+    await ipcRenderer.emit("end-loading-replays", {});
+
+    expect(useReplayStore.getState().userConnectCode).toBe("");
+    expect(useReplayStore.getState().newStatInfo).toBeNull();
+    expect(useReplayStore.getState().userCandidates).toEqual([
+      { connectCode: USER, appearances: 12 },
+      { connectCode: OPPONENT, appearances: 4 },
+    ]);
+  });
+
+  it("stores the candidate the user confirms and rebuilds stats for it", async () => {
+    useReplayStore.setState({
+      userCandidates: [{ connectCode: USER, appearances: 12 }],
+    });
+
+    await useReplayStore.getState().confirmUserConnectCode("user#001");
+
+    expect(settings.upsertSetting).toHaveBeenCalledWith("username", USER);
+    expect(useReplayStore.getState()).toMatchObject({
+      userConnectCode: USER,
+      userCandidates: [],
+    });
+    expect(useReplayStore.getState().newStatInfo).not.toBeNull();
+  });
+
+  // Rule B. A game in progress contains the user, so it settles the question
+  // without asking — as long as the library tells the two players apart.
+  it("takes the user from a live game when the answer is not a coin flip", async () => {
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+
+    expect(useReplayStore.getState().userConnectCode).toBe(USER);
+    expect(settings.upsertSetting).toHaveBeenCalledWith("username", USER);
+  });
+
+  // An even split is decided by port order, which is no evidence at all.
+  it("does not store a live-game guess the library cannot support", async () => {
+    vi.mocked(db.identifyUserFromLiveGame).mockResolvedValueOnce({
+      connectCode: USER,
+      isConfident: false,
+    });
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+
+    expect(useReplayStore.getState().userConnectCode).toBe("");
+    expect(settings.upsertSetting).not.toHaveBeenCalled();
+  });
+
+  it("leaves a configured connect code alone when a game starts", async () => {
+    useReplayStore.setState({ userConnectCode: OPPONENT });
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+
+    expect(db.identifyUserFromLiveGame).not.toHaveBeenCalled();
+    expect(useReplayStore.getState().userConnectCode).toBe(OPPONENT);
   });
 });
 
@@ -227,34 +402,35 @@ describe("a live game starting", () => {
 describe("a finished game updating the stats", () => {
   const finished = { replayName: "Game_Finished.slp" };
 
-  it("identifies the user from the live game when one is in progress", async () => {
+  // The identity is already settled by the time a game finishes — rules A and
+  // B both run before this. Working it out again here could answer differently
+  // from the code `newStatInfo` was folded against, and count the game for the
+  // wrong player.
+  it("counts the game for whoever the running stats were built for", async () => {
+    vi.mocked(db.selectReplay).mockResolvedValueOnce(makeMatch({ isWin: true }));
     useReplayStore.setState({
       newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
-      currentReplayInfo: {
-        stageId: "31",
-        players: liveGameArgs.players,
-      },
+      userConnectCode: USER,
+      currentReplayInfo: { stageId: "31", players: liveGameArgs.players },
     });
 
     await ipcRenderer.emit("update-stats", finished);
 
-    expect(db.determineUserBasedOnLiveGame).toHaveBeenCalledWith([
-      USER,
-      OPPONENT,
-    ]);
-    expect(db.attemptGetUser).not.toHaveBeenCalled();
+    expect(useReplayStore.getState().userConnectCode).toBe(USER);
+    expect(
+      useReplayStore.getState().newStatInfo?.stats.overallStat,
+    ).toMatchObject({ totalCount: 2, winCount: 2 });
   });
 
-  it("falls back to the stored user when no game is in progress", async () => {
+  it("does nothing when no identity has been settled", async () => {
     useReplayStore.setState({
       newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
-      currentReplayInfo: null,
+      userConnectCode: "",
     });
 
     await ipcRenderer.emit("update-stats", finished);
 
-    expect(db.attemptGetUser).toHaveBeenCalled();
-    expect(db.determineUserBasedOnLiveGame).not.toHaveBeenCalled();
+    expect(db.selectReplay).not.toHaveBeenCalled();
   });
 
   it("does nothing when no stats have been loaded yet", async () => {
@@ -270,6 +446,7 @@ describe("a finished game updating the stats", () => {
     vi.mocked(db.selectReplay).mockResolvedValueOnce(makeMatch({ isWin: true }));
     useReplayStore.setState({
       newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
+      userConnectCode: USER,
       currentReplayInfo: { stageId: "31", players: liveGameArgs.players },
     });
 

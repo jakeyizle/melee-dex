@@ -1,4 +1,3 @@
-import { BaseStat } from "@/types";
 import { Paper, Typography } from "@mui/material";
 
 interface GamesPlayedDisplayProps {

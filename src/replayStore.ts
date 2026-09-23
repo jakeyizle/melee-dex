@@ -1,9 +1,9 @@
 import { create } from "zustand";
 import {
-  attemptGetUser,
   deleteLegacyLatestReplayPointer,
-  determineUserBasedOnLiveGame,
-  getMostCommonUser,
+  getUserCandidates,
+  identifyUserFromLiveGame,
+  selectRecentReplaysAgainst,
   insertBadReplays,
   insertReplays,
   Replay,
@@ -15,7 +15,6 @@ import {
   FullStats,
   HeadToHeadStats,
   LiveReplayPlayers,
-  StatInfo,
 } from "@/types";
 import { selectAllReplayNames } from "@/db/replays";
 import {
@@ -23,15 +22,36 @@ import {
   getStats,
   updateStatsWithReplay,
 } from "./utils/statUtils";
-import { updateUsernameIfEmpty } from "./db/settings";
+import {
+  markReplayBackfillDone,
+  needsReplayBackfill,
+  selectSetting,
+  upsertSetting,
+} from "./db/settings";
+
+/**
+ * How many connect codes the identity card offers. Enough that the right answer
+ * is still there when the commonest player is not the user — a shared machine,
+ * or a library full of one opponent — and few enough to pick from at a glance.
+ */
+export const IDENTITY_CANDIDATE_LIMIT = 5;
+
+export type UserCandidate = { connectCode: string; appearances: number };
+
+/** How many past games against the current opponent the live view lists. */
+export const RECENT_GAMES_LIMIT = 5;
 
 type ReplayStore = {
   // Shared state
   currentReplayInfo: CurrentReplayInfo | null;
   currentLiveFileName: string;
-  headToHeadReplays: Replay[];
-  statInfo: StatInfo | null;
   newStatInfo: FullStats | null;
+  /** Whether the import in flight is a schema backfill. See `loadReplayDirectory`. */
+  isBackfilling: boolean;
+  /** Connect codes offered for the user to identify themselves. Empty once one is known. */
+  userCandidates: UserCandidate[];
+  /** The last few games against the current opponent, newest first. Queried per game. */
+  recentReplays: Replay[];
   userConnectCode: string;
   headToHeadStats: HeadToHeadStats | null;
 
@@ -45,19 +65,21 @@ type ReplayStore = {
 
   // Actions
   loadReplayDirectory: (replayDirectory: string) => void;
+  confirmUserConnectCode: (connectCode: string) => Promise<void>;
   handleLiveReplay: (args: {
     filename: string;
     players: LiveReplayPlayers[];
     stageId: string;
-  }) => void;
+  }) => Promise<void>;
 };
 
 export const useReplayStore = create<ReplayStore>((set, get) => ({
   currentReplayInfo: null,
   currentLiveFileName: "",
-  headToHeadReplays: [],
-  statInfo: null,
   newStatInfo: null,
+  isBackfilling: false,
+  userCandidates: [],
+  recentReplays: [],
   userConnectCode: "",
   headToHeadStats: null,
 
@@ -73,7 +95,15 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
     // Clears a row older versions left in the replays store. Delete this, and
     // the function behind it, once it has run.
     await deleteLegacyLatestReplayPointer();
-    const existingReplayNames = await selectAllReplayNames();
+
+    // A backfill is an import that skips nothing: every file on disk is
+    // re-parsed and overwrites the row stored for it, which is the only way to
+    // fill in fields that cannot be derived from what was stored. Rows whose
+    // files have since been deleted keep their old shape and stay valid.
+    const isBackfilling = await needsReplayBackfill();
+    const existingReplayNames = isBackfilling
+      ? []
+      : await selectAllReplayNames();
     // Only main can say whether an import began. If it declined — a load is
     // already running, or the directory could not be read — no
     // `end-loading-replays` is coming, and showing the progress bar would
@@ -82,12 +112,40 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
       replayDirectory,
       existingReplayNames,
     });
-    if (hasStarted) set({ isLoadingReplays: true });
+    // Only a load that actually started has re-read the directory, so only that
+    // one can be allowed to stamp the schema version when it ends. A declined
+    // load — a directory that has been moved, or one with nothing in it — must
+    // leave the backfill outstanding for the next launch.
+    if (hasStarted) set({ isLoadingReplays: true, isBackfilling });
+  },
+
+  confirmUserConnectCode: async (connectCode) => {
+    const userConnectCode = connectCode.trim().toUpperCase();
+    if (!userConnectCode) return;
+    await upsertSetting("username", userConnectCode);
+    set({
+      userConnectCode,
+      userCandidates: [],
+      newStatInfo: await getStats(userConnectCode),
+    });
   },
 
   handleLiveReplay: async ({ filename, players, stageId }) => {
     const currentLiveFileName = get().currentLiveFileName;
     if (filename === currentLiveFileName) return;
+
+    // Rule B: a game in progress names both players, and one of them is the
+    // user. Taken only when nothing is configured yet, and stored only when the
+    // library actually distinguishes the two — an even split is decided by port
+    // order, which is no evidence at all.
+    if (!get().userConnectCode) {
+      const { connectCode, isConfident } = await identifyUserFromLiveGame(
+        players.map((player) => player.connectCode),
+      );
+      if (connectCode && isConfident) {
+        await get().confirmUserConnectCode(connectCode);
+      }
+    }
 
     const newStatInfo = get().newStatInfo;
     const headToHeadStats = newStatInfo
@@ -101,7 +159,27 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
       currentReplayInfo: { players, stageId },
       currentLiveFileName: filename,
       headToHeadStats,
+      // Cleared rather than left in place: what is on screen must never be the
+      // previous opponent's games while this one's are being fetched.
+      recentReplays: [],
     });
+
+    // Queried, not held in the running stats: one scan costs the same whether
+    // it answers for one opponent or all of them, and this happens once per
+    // game rather than once per replay. Published separately so the rest of the
+    // live view renders immediately and the list fills in behind it.
+    const userConnectCode = get().userConnectCode;
+    const opponent = players.find(
+      (player) => player.connectCode !== userConnectCode,
+    );
+    if (!opponent) return;
+    const recentReplays = await selectRecentReplaysAgainst(
+      opponent.connectCode,
+      RECENT_GAMES_LIMIT,
+    );
+    // The game may have moved on while the scan ran; a stale list must not
+    // land on top of a newer one.
+    if (get().currentLiveFileName === filename) set({ recentReplays });
   },
 }));
 
@@ -145,23 +223,26 @@ export const setupReplayStoreIpcListeners = () => {
       });
   });
 
-  window.ipcRenderer.on("live-replay-loaded", (_event, args) => {
+  // Awaited: identifying the user from the live game reads the library, so the
+  // state this publishes lands several ticks after the message arrives.
+  window.ipcRenderer.on("live-replay-loaded", async (_event, args) => {
     const { handleLiveReplay } = getState();
-    handleLiveReplay(args);
+    await handleLiveReplay(args);
   });
 
   window.ipcRenderer.on("end-loading-replays", async (_event, args) => {
     const totalReplayCount = await selectReplayCount();
     const totalBadReplayCount = await selectBadReplayCount();
-    // const { currentReplayInfo } = getState();
-    // const { statInfo, headToHeadReplays } = currentReplayInfo
-    //   ? await getStatInfo({ currentReplayInfo })
-    //   : { statInfo: null, headToHeadReplays: [] };
-    // getMostCommonUser reads every replay in the library, so it is passed
-    // unevaluated: it only runs when no username has been configured yet.
-    const userConnectCode = await updateUsernameIfEmpty(() =>
-      getMostCommonUser([]),
-    );
+    if (getState().isBackfilling) await markReplayBackfillDone();
+    // Rule A: the connect code the user entered, and nothing else. Older
+    // versions guessed the commonest player in the library here and *persisted*
+    // it, so a wrong guess became permanent and silent. The guess is still made
+    // — as candidates the identity card offers — but it is never stored until
+    // it has been confirmed, either by the user or by a live game they are in.
+    const userConnectCode = (await selectSetting("username")).toUpperCase();
+    const userCandidates = userConnectCode
+      ? []
+      : await getUserCandidates(IDENTITY_CANDIDATE_LIMIT);
     const statInfo = userConnectCode ? await getStats(userConnectCode) : null;
     setState({
       isLoadingReplays: false,
@@ -172,6 +253,8 @@ export const setupReplayStoreIpcListeners = () => {
       totalBadReplayCount,
       newStatInfo: statInfo,
       userConnectCode,
+      userCandidates,
+      isBackfilling: false,
     });
   });
 
@@ -182,12 +265,12 @@ export const setupReplayStoreIpcListeners = () => {
     const replayName = (args as { replayName?: string } | undefined)?.replayName;
     if (!replayName) return;
 
-    const { currentReplayInfo, newStatInfo } = getState();
-    const userConnectCode = currentReplayInfo
-      ? await determineUserBasedOnLiveGame(
-          currentReplayInfo.players.map((player) => player.connectCode),
-        )
-      : await attemptGetUser();
+    const { currentReplayInfo, newStatInfo, userConnectCode } = getState();
+    // Whoever the stats were built for. This used to work the identity out
+    // again from scratch, which could answer differently from the code
+    // `newStatInfo` was folded against and quietly count the game for the wrong
+    // player. There is nothing to fold into before an identity is settled
+    // anyway: `newStatInfo` is null until one is.
     if (!userConnectCode || !newStatInfo) return;
     const stats = await updateStatsWithReplay(
       newStatInfo,

@@ -36,10 +36,12 @@ export const CharacterUsagePaper = ({
   characterUsageStats,
   color,
 }: CharacterUsagePaperProps) => {
-  characterUsageStats = characterUsageStats
+  // A copy: the array is derived from the store's FullStats, and sorting it in
+  // place reorders state from inside a render.
+  const topCharacters = [...characterUsageStats]
     .sort((a, b) => b.playRate - a.playRate)
     .slice(0, 3);
-  const characterAvatars = characterUsageStats.map((stat) => {
+  const characterAvatars = topCharacters.map((stat) => {
     return (
       <Grid size={{ xs: 4 }} key={stat.characterId}>
         <CharacterUsageAvatar

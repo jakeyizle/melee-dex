@@ -21,6 +21,12 @@ const theme = createTheme({
   },
 });
 
+const NAV_LINKS = [
+  { to: "/", label: "Dashboard" },
+  { to: "/library", label: "Library" },
+  { to: "/settings", label: "Settings" },
+];
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [version, setVersion] = useState("");
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -75,31 +81,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {title}
             </Typography>
             <Box sx={{ ml: "auto", display: "flex", gap: 3 }}>
-              <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: 500,
-                    "&:hover": { textDecoration: "underline" },
-                  }}
+              {NAV_LINKS.map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  style={{ textDecoration: "none", color: "inherit" }}
                 >
-                  Dashboard
-                </Typography>
-              </Link>
-              <Link
-                to="/settings"
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: 500,
-                    "&:hover": { textDecoration: "underline" },
-                  }}
-                >
-                  Settings
-                </Typography>
-              </Link>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 500,
+                      "&:hover": { textDecoration: "underline" },
+                    }}
+                  >
+                    {label}
+                  </Typography>
+                </Link>
+              ))}
             </Box>
           </Toolbar>
         </AppBar>

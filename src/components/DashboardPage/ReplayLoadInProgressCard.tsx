@@ -10,8 +10,12 @@ import {
 import { LoadProgressBar } from "./LoadProgressBar";
 
 export const ReplayLoadInProgressCard = () => {
-  const { currentReplaysLoaded, totalReplaysToLoad, replaysPerSecond } =
-    useReplayStore();
+  const {
+    currentReplaysLoaded,
+    totalReplaysToLoad,
+    replaysPerSecond,
+    isBackfilling,
+  } = useReplayStore();
 
   return (
     <Card sx={{ maxWidth: 800, mx: "auto", mt: 4 }}>
@@ -22,11 +26,12 @@ export const ReplayLoadInProgressCard = () => {
             component="h2"
             sx={{ fontWeight: "bold", mb: 1 }}
           >
-            Loading Replay Files
+            {isBackfilling ? "Updating Your Replays" : "Loading Replay Files"}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Please wait while your replay files are being processed. This may
-            take a little while depending on how many files you have.
+            {isBackfilling
+              ? "This version reads more out of each replay than the one that imported yours, so they are being read again. It only happens once."
+              : "Please wait while your replay files are being processed. This may take a little while depending on how many files you have."}
           </Typography>
         </Box>
 

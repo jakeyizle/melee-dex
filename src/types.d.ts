@@ -1,4 +1,4 @@
-import { Character } from "@slippi/slippi-js";
+import type { ReplayMode } from "@/db/replays";
 
 export type LiveReplayPlayers = {
   connectCode: string;
@@ -11,42 +11,10 @@ export type CurrentReplayInfo = {
   stageId: string;
 };
 
-export type PlayerCharacter = {
-  connectCode: string;
-  characterId: string;
-};
-
 export type CharacterUsageStat = {
   characterId: string;
   playCount: number;
   playRate: number;
-};
-
-export type PlayerInfo = {
-  connectCode: string;
-  currentCharacterId: string;
-  characterUsage: CharacterUsageStat[];
-};
-
-export type StatType =
-  | "overall"
-  | "stage"
-  | "currentMatchUp"
-  | "currentMatchUpAndStage";
-
-export type BaseStat = {
-  type: StatType;
-  totalCount: number;
-  winCount: number;
-  lossCount: number;
-  winRate: number;
-};
-
-export type StatInfo = {
-  userInfo: PlayerInfo;
-  opponentInfo: PlayerInfo;
-  userStat: BaseStat[];
-  headToHeadStat: BaseStat[];
 };
 
 export type Stat = {
@@ -60,6 +28,11 @@ export type StageStat = Stat & {
   stageId: string;
 };
 
+/** The ranked/unranked split. `overallStat` is the two of these combined. */
+export type ModeStat = Stat & {
+  mode: ReplayMode;
+};
+
 export type MatchupStat = Stat & {
   userCharacterId: string;
   opponentCharacterId: string;
@@ -69,6 +42,7 @@ export type MatchupAndStageStat = StageStat & MatchupStat;
 
 export type Stats = {
   overallStat: Stat;
+  modeStats: ModeStat[];
   stageStats: StageStat[];
   matchupStats: MatchupStat[];
   matchupAndStageStats: MatchupAndStageStat[];
@@ -78,11 +52,28 @@ export type OpponentStats = Stats & {
   opponentConnectCode: string;
   firstMatchDate: string;
   lastMatchDate: string;
+  /**
+   * Every display name this connect code has played under, in the order first
+   * seen. The connect code is the identity; the name is what the user actually
+   * remembers them by, and it changes.
+   */
+  knownNames: string[];
 };
 
 export type FullStats = {
   stats: Stats;
   opponentSpecificStats: OpponentStats[];
+  /**
+   * `opponentSpecificStats` keyed by connect code — the *same* objects, not
+   * copies, so writing through either is writing through both.
+   *
+   * Finding the opponent row was a linear scan of the array, once per replay,
+   * which made building the stats O(replays x opponents): measured at 5.0us per
+   * replay over 500 opponents, 14us over 3,000 and 43.8us over 10,000, where it
+   * had become 2.6x the cost of the IndexedDB scan feeding it. The array stays
+   * because the UI iterates and sorts it.
+   */
+  opponentIndex: Map<string, OpponentStats>;
 };
 
 export type HeadToHeadStats = {

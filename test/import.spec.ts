@@ -126,4 +126,49 @@ suite("importing a replay directory", () => {
     // Nothing is re-parsed: the replays are already in IndexedDB.
     expect(loadedCount).toBe("6");
   }, 180_000);
+
+  // Last, because it leaves the app on a different route: the restart test
+  // above reloads the page, and HashRouter would restore whatever is current.
+  test("the library asks who the user is before showing a record", async () => {
+    await page.getByRole("link", { name: "Library" }).click();
+
+    // No connect code was ever entered. The app has a good guess — it counted
+    // every player during the import — but it offers it instead of storing it.
+    await expect
+      .poll(() => page.getByText("Which of these is you?").isVisible(), {
+        timeout: 15_000,
+      })
+      .toBe(true);
+
+    await expect
+      .poll(() => page.getByRole("button", { name: /#\d/ }).count())
+      .toBeGreaterThan(0);
+  }, 60_000);
+
+  test("confirming a connect code reveals the library's stats", async () => {
+    await page.getByRole("button", { name: /#\d/ }).first().click();
+
+    await expect
+      .poll(() => page.getByText("Overall Stats").isVisible(), {
+        timeout: 15_000,
+      })
+      .toBe(true);
+
+    // Stats are built from IndexedDB, so the library has real numbers in it
+    // even though no game has been played.
+    const gamesPlayed = await page
+      .getByText("Total Games Played")
+      .locator("xpath=following-sibling::*[1]")
+      .textContent();
+
+    // Six replays were imported, but only the ones the confirmed connect code
+    // appears in count, so assert the shape and a non-zero total rather than 6.
+    expect(gamesPlayed).toMatch(/^([1-9]\d*) \(\d+ - \d+\)$/);
+
+    // The ranked/unranked split is present from the start, not once a ranked
+    // game exists: testdata is entirely unranked.
+    await expect
+      .poll(() => page.getByText("Ranked and Unranked").isVisible())
+      .toBe(true);
+  }, 60_000);
 });

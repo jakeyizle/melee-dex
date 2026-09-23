@@ -2,7 +2,12 @@ import { replaysStore, badReplaysStore } from "./stores";
 import { createReplayRepository } from "./replayRepository";
 import { settingsRepository } from "./settings";
 
-export type { Replay, ReplayPlayer, KeyValueStore } from "./replayRepository";
+export type {
+  Replay,
+  ReplayPlayer,
+  ReplayMode,
+  KeyValueStore,
+} from "./replayRepository";
 export { LATEST_REPLAY_KEY } from "./replayRepository";
 
 // The app-wide instance, bound to the real localforage stores.
@@ -20,8 +25,9 @@ export const {
   selectReplay,
   deleteLegacyLatestReplayPointer,
   getMostCommonUser,
+  getUserCandidates,
+  identifyUserFromLiveGame,
+  selectRecentReplaysAgainst,
   selectBadReplayCount,
-  determineUserBasedOnLiveGame,
-  attemptGetUser,
   executeCallbackOnEachReplay,
 } = replayRepository;

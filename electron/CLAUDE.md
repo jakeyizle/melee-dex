@@ -63,6 +63,31 @@ Main → main renderer: `update-ready`, `update-replay-load-progress`, `live-rep
 
 Main ↔ worker (`utilityProcess` messages, not `ipcMain`): `parse` out, `ready` / `parsed` back.
 
+## Tests
+
+`test/unit/replayLoadManager.test.ts` and `test/unit/electronUtils.test.ts` run the real main-process
+code in Node with its surroundings faked: `test/helpers/fakeParserWorker.ts` stands in for the
+`utilityProcess` (tests drive `finishBatch` / `crash` on it), and `node:fs`, `./utils` and
+`./vite_constants` are mocked so the file walk, the renderer and `SlippiGame` are all controllable.
+The pool logic, the ack backpressure, the crash isolation and the live watcher are the code
+actually under test.
+
+Two things to know before adding to them. `ReplayLoadManager` is a singleton, so each test clears
+its private static rather than calling `vi.resetModules()` — resetting the registry would hand the
+mock factory a *second* copy of the fake worker module, and the instances the test inspects would
+not be the ones the pool built. And `NUM_CORES` in `utils.ts` is read once at import, so a
+different machine is simulated by reloading that module.
+
+`test/unit/replayParser.test.ts` covers the worker entry itself. `process.parentPort` only exists
+inside a utilityProcess and the module talks to it at import time, so the stub has to be attached
+to `process` **before** the module is imported, and `createRequire` is mocked to hand back the real
+`slippi-js`. The `.slp` files and the parsing are real — the two smallest in `testdata/`, so it
+stays fast.
+
+`test/live.spec.ts` covers the same path end to end for real: a `.slp` is copied into a temp replay
+directory while the app runs, and the assertion is that the dashboard swaps to the head-to-head
+card. Nothing is faked there but the folder picker.
+
 ## Gotchas
 
 - `VITE_DEV_SERVER_URL` is the dev/prod switch throughout. `electron/main/vite_constants.ts` sets

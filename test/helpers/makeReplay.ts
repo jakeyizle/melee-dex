@@ -24,6 +24,12 @@ export const makeReplay = (overrides: Partial<Replay> = {}): Replay => {
     stageId: "31",
     players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
     winnerConnectCode: USER,
+    // Unranked by default: it is what the overwhelming majority of a real
+    // library is, and what a replay with no matchId is classified as.
+    mode: "unranked",
+    matchId: "",
+    gameNumber: 1,
+    lastFrame: 7200,
     ...overrides,
   };
 };

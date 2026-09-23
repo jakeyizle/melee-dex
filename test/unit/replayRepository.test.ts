@@ -6,7 +6,13 @@ import {
 } from "@/db/replayRepository";
 import { createSettingsRepository } from "@/db/settingsRepository";
 import { createInMemoryStore } from "../helpers/inMemoryStore";
-import { makeReplay, makePlayer, USER, OPPONENT } from "../helpers/makeReplay";
+import {
+  makeReplay,
+  makeMatch,
+  makePlayer,
+  USER,
+  OPPONENT,
+} from "../helpers/makeReplay";
 
 const THIRD_PLAYER = "THRD#003";
 
@@ -159,44 +165,156 @@ describe("working out who the user is", () => {
   });
 });
 
-describe("determineUserBasedOnLiveGame", () => {
-  it("uses the configured username when that player is in the live game", async () => {
-    const { repo } = setup({ username: "user#001" });
-    await seedReplays(repo, [
-      makeReplay({ players: [makePlayer(OPPONENT, "0"), makePlayer(THIRD_PLAYER, "9")] }),
-      makeReplay({ players: [makePlayer(OPPONENT, "0"), makePlayer(THIRD_PLAYER, "9")] }),
-    ]);
-
-    // Stored lowercase; matching is case-insensitive via uppercasing.
-    expect(await repo.determineUserBasedOnLiveGame([USER, OPPONENT])).toBe(USER);
-  });
-
-  it("falls back to the more frequently seen player when the configured user is absent", async () => {
-    const { repo } = setup({ username: "SOMEONE#999" });
+describe("getUserCandidates", () => {
+  it("ranks connect codes by how often they appear", async () => {
+    const { repo } = setup();
     await seedReplays(repo, [
       makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
       makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
+      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
     ]);
 
-    expect(await repo.determineUserBasedOnLiveGame([OPPONENT, USER])).toBe(USER);
-  });
-});
-
-describe("attemptGetUser", () => {
-  it("prefers the configured username, uppercased", async () => {
-    const { repo } = setup({ username: "user#001" });
-
-    expect(await repo.attemptGetUser()).toBe(USER);
+    expect(await repo.getUserCandidates(5)).toEqual([
+      { connectCode: USER, appearances: 3 },
+      { connectCode: THIRD_PLAYER, appearances: 2 },
+      { connectCode: OPPONENT, appearances: 1 },
+    ]);
   });
 
-  it("falls back to the most common player when no username is configured", async () => {
+  it("returns at most the number asked for", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
       makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
       makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
     ]);
 
-    expect(await repo.attemptGetUser()).toBe(USER);
+    expect(await repo.getUserCandidates(1)).toEqual([
+      { connectCode: USER, appearances: 2 },
+    ]);
+  });
+
+  it("returns nothing for an empty library", async () => {
+    const { repo } = setup();
+
+    expect(await repo.getUserCandidates(5)).toEqual([]);
+  });
+});
+
+describe("identifyUserFromLiveGame", () => {
+  it("is confident about the configured user", async () => {
+    const { repo } = setup({ username: "user#001" });
+
+    expect(await repo.identifyUserFromLiveGame([USER, OPPONENT])).toEqual({
+      connectCode: USER,
+      isConfident: true,
+    });
+  });
+
+  it("is confident when one player appears in more stored replays", async () => {
+    const { repo } = setup();
+    await seedReplays(repo, [
+      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
+      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
+    ]);
+
+    expect(await repo.identifyUserFromLiveGame([OPPONENT, USER])).toEqual({
+      connectCode: USER,
+      isConfident: true,
+    });
+  });
+
+  // Both players appear equally often, so getMostCommonUser falls through to
+  // the first candidate — and candidates arrive in the live game's port order.
+  // The answer is a coin flip and must not be stored as though it were not.
+  it("is not confident when the two players are indistinguishable", async () => {
+    const { repo } = setup();
+    await seedReplays(repo, [
+      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
+    ]);
+
+    expect(await repo.identifyUserFromLiveGame([USER, OPPONENT])).toMatchObject({
+      isConfident: false,
+    });
+  });
+
+  it("is not confident when the library is empty", async () => {
+    const { repo } = setup();
+
+    expect(await repo.identifyUserFromLiveGame([USER, OPPONENT])).toMatchObject({
+      isConfident: false,
+    });
+  });
+});
+
+describe("selectRecentReplaysAgainst", () => {
+  const history = [
+    makeMatch({ opponent: OPPONENT, date: "2025-01-01T00:00:00Z" }),
+    makeMatch({ opponent: OPPONENT, date: "2025-03-01T00:00:00Z" }),
+    makeMatch({ opponent: OPPONENT, date: "2025-02-01T00:00:00Z" }),
+    makeMatch({ opponent: THIRD_PLAYER, date: "2025-04-01T00:00:00Z" }),
+  ];
+
+  it("returns games against that opponent only, newest first", async () => {
+    const { repo } = setup();
+    await seedReplays(repo, history);
+
+    const recent = await repo.selectRecentReplaysAgainst(OPPONENT, 5);
+
+    expect(recent.map((replay) => replay.date)).toEqual([
+      "2025-03-01T00:00:00Z",
+      "2025-02-01T00:00:00Z",
+      "2025-01-01T00:00:00Z",
+    ]);
+  });
+
+  it("returns no more than the limit", async () => {
+    const { repo } = setup();
+    await seedReplays(repo, history);
+
+    const recent = await repo.selectRecentReplaysAgainst(OPPONENT, 2);
+
+    expect(recent.map((replay) => replay.date)).toEqual([
+      "2025-03-01T00:00:00Z",
+      "2025-02-01T00:00:00Z",
+    ]);
+  });
+
+  // The trim runs mid-scan once enough rows have piled up, so a history longer
+  // than the trim threshold has to come back in the same order as a short one.
+  it("keeps the newest games across a history long enough to be trimmed", async () => {
+    const { repo } = setup();
+    await seedReplays(
+      repo,
+      Array.from({ length: 60 }, (_unused, index) =>
+        makeMatch({
+          opponent: OPPONENT,
+          date: new Date(Date.UTC(2025, 0, index + 1)).toISOString(),
+        }),
+      ),
+    );
+
+    const recent = await repo.selectRecentReplaysAgainst(OPPONENT, 3);
+
+    expect(recent.map((replay) => replay.date)).toEqual([
+      new Date(Date.UTC(2025, 0, 60)).toISOString(),
+      new Date(Date.UTC(2025, 0, 59)).toISOString(),
+      new Date(Date.UTC(2025, 0, 58)).toISOString(),
+    ]);
+  });
+
+  it("returns nothing for an opponent never played", async () => {
+    const { repo } = setup();
+    await seedReplays(repo, history);
+
+    expect(await repo.selectRecentReplaysAgainst("NONE#000", 5)).toEqual([]);
+  });
+
+  it("returns nothing when asked for no opponent or no games", async () => {
+    const { repo } = setup();
+    await seedReplays(repo, history);
+
+    expect(await repo.selectRecentReplaysAgainst("", 5)).toEqual([]);
+    expect(await repo.selectRecentReplaysAgainst(OPPONENT, 0)).toEqual([]);
   });
 });
 

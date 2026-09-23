@@ -298,7 +298,10 @@ export class ReplayLoadManager {
                 characterId: (player.characterId || 0).toString(),
               };
             });
-            const stageId = settings.stageId;
+            // Stage ids are strings everywhere downstream (see the root
+            // CLAUDE.md) — sending the raw number makes every stage comparison
+            // in the renderer silently fail to match.
+            const stageId = (settings.stageId ?? "").toString();
             mainWindow?.webContents.send("live-replay-loaded", {
               filename,
               players,

@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { createSettingsRepository } from "@/db/settingsRepository";
+import {
+  createSettingsRepository,
+  REPLAY_SCHEMA_VERSION,
+} from "@/db/settingsRepository";
 import { createInMemoryStore } from "../helpers/inMemoryStore";
 
 const setup = (seed: Record<string, unknown> = {}) =>
@@ -61,46 +64,35 @@ describe("writing settings", () => {
   });
 });
 
-describe("updateUsernameIfEmpty", () => {
-  it("stores the suggested username, uppercased, when none is set", async () => {
-    const settings = setup();
+describe("the replay schema backfill", () => {
+  it("is outstanding for a library imported before the version was recorded", async () => {
+    const settings = setup({ replayDirectory: "C:/Slippi" });
 
-    const result = await settings.updateUsernameIfEmpty(async () => "user#001");
-
-    expect(result).toBe("USER#001");
-    expect(await settings.selectSetting("username")).toBe("USER#001");
+    expect(await settings.needsReplayBackfill()).toBe(true);
   });
 
-  it("leaves an already-configured username alone", async () => {
-    const settings = setup({ username: "MINE#123" });
-
-    const result = await settings.updateUsernameIfEmpty(async () => "OTHER#999");
-
-    expect(result).toBe("MINE#123");
-  });
-
-  // Working out a username reads the whole replay library, so it must not
-  // happen at all when one is already configured.
-  it("does not ask for a suggestion when a username is already set", async () => {
-    const settings = setup({ username: "MINE#123" });
-    let asked = false;
-
-    await settings.updateUsernameIfEmpty(async () => {
-      asked = true;
-      return "OTHER#999";
+  it("is outstanding for a library written by an older schema", async () => {
+    const settings = setup({
+      schemaVersion: String(REPLAY_SCHEMA_VERSION - 1),
     });
 
-    expect(asked).toBe(false);
+    expect(await settings.needsReplayBackfill()).toBe(true);
   });
 
-  // Nothing in the library identifies the user yet — a first run over a
-  // directory with no valid replays. This used to throw on .toUpperCase().
-  it("stores nothing when there is no username to suggest", async () => {
+  it("is not outstanding once it has been marked done", async () => {
     const settings = setup();
 
-    const result = await settings.updateUsernameIfEmpty(async () => "");
+    await settings.markReplayBackfillDone();
 
-    expect(result).toBe("");
-    expect(await settings.selectSetting("username")).toBe("");
+    expect(await settings.needsReplayBackfill()).toBe(false);
+    expect(await settings.selectSetting("schemaVersion")).toBe(
+      String(REPLAY_SCHEMA_VERSION),
+    );
+  });
+
+  it("is not outstanding for a library already at the current schema", async () => {
+    const settings = setup({ schemaVersion: String(REPLAY_SCHEMA_VERSION) });
+
+    expect(await settings.needsReplayBackfill()).toBe(false);
   });
 });

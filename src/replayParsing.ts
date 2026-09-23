@@ -1,5 +1,5 @@
 import type { SlippiGame } from "@slippi/slippi-js";
-import type { ReplayPlayer, Replay } from "./db/replays";
+import type { ReplayPlayer, Replay, ReplayMode } from "./db/replays";
 
 export type ReplayFileInfo = { name: string; path: string };
 
@@ -34,6 +34,14 @@ export const isReplayValid = (replay: Replay) => {
     )
   );
 };
+
+/**
+ * Ranked is the only mode with a set structure, so it is the only one worth
+ * naming. `matchId` looks like `mode.unranked-2025-04-18T03:01:45.00-3`;
+ * replays from before slp 3.14 have none at all, and are unranked by default.
+ */
+export const getReplayMode = (matchId: string | undefined): ReplayMode =>
+  matchId?.startsWith("mode.ranked") ? "ranked" : "unranked";
 
 export const tryGetWinner = (game: SlippiGame) => {
   let winners = game.getWinners();
@@ -115,6 +123,10 @@ export const parseGameToReplay = (
   const winnerCode =
     winnerIndex === 0 ? playerOne.connectCode : playerTwo.connectCode;
 
+  // All four come out of the GAME_START header block and the metadata slippi-js
+  // has already read, so they cost nothing on top of the parse that got us here.
+  const matchId = settings.matchInfo?.matchId ?? "";
+
   const replay: Replay = {
     name: file.name,
     path: file.path,
@@ -122,6 +134,10 @@ export const parseGameToReplay = (
     players: [playerOne, playerTwo],
     winnerConnectCode: winnerCode,
     stageId: stageId?.toString() || "",
+    mode: getReplayMode(matchId),
+    matchId,
+    gameNumber: settings.matchInfo?.gameNumber ?? null,
+    lastFrame: metadata.lastFrame ?? null,
   };
 
   if (!isReplayValid(replay)) {

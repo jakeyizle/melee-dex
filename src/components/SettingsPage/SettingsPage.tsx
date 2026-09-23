@@ -26,9 +26,13 @@ import WarningIcon from "@mui/icons-material/Warning";
 import { useNavigate } from "react-router-dom";
 import { selectAllSettings, upsertSettings } from "../../db/settings";
 import { dropDB } from "@/db/stores";
+import { useReplayStore } from "@/replayStore";
 
 export const SettingsPage = () => {
   const navigate = useNavigate();
+  const confirmUserConnectCode = useReplayStore(
+    (state) => state.confirmUserConnectCode,
+  );
   const [replayDirectory, setReplayDirectory] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [directoryErrorText, setDirectoryErrorText] = useState<string>("");
@@ -78,7 +82,19 @@ export const SettingsPage = () => {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     setUsername(event.target.value);
-    upsertSettings([{ key: "username", value: event.target.value }]);
+  };
+
+  /**
+   * The connect code is committed on blur and on save, never per keystroke.
+   * Writing every keystroke stored half-typed codes like "AB", which then
+   * matched no player, leaving an empty-but-present FullStats behind it.
+   *
+   * It goes through the store rather than straight to settings so the stats are
+   * rebuilt against the new code right away; otherwise entering it here did
+   * nothing visible until the next launch.
+   */
+  const commitConnectCode = () => {
+    confirmUserConnectCode(username);
   };
 
   const handleSaveSettings = () => {
@@ -86,6 +102,7 @@ export const SettingsPage = () => {
       setDirectoryErrorText("Please select a replay directory");
       return;
     }
+    commitConnectCode();
     navigate("/");
   };
 
@@ -153,6 +170,7 @@ export const SettingsPage = () => {
                     placeholder="Enter your Slippi connect code..."
                     value={username}
                     onChange={handleConnectCodeChange}
+                    onBlur={commitConnectCode}
                   />
                 </FormControl>
                 <Typography variant="body2" color="text.secondary">

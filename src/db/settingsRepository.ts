@@ -1,6 +1,16 @@
 import { KeyValueStore } from "./replayRepository";
 
-export type SETTINGS_KEYS = "replayDirectory" | "username";
+export type SETTINGS_KEYS = "replayDirectory" | "username" | "schemaVersion";
+
+/**
+ * Bumped whenever `Replay` gains a field that cannot be derived from what is
+ * already stored. A library written by an older version is re-imported once, by
+ * re-parsing the files still on disk; rows whose files are gone keep their old
+ * shape, which is why every added field has to stay optional.
+ *
+ * 1 — pre-`mode`. 2 — `mode`, `matchId`, `gameNumber`, `lastFrame`.
+ */
+export const REPLAY_SCHEMA_VERSION = 2;
 
 export const createSettingsRepository = (settingsStore: KeyValueStore) => {
   const selectSetting = async (key: SETTINGS_KEYS): Promise<string> => {
@@ -11,6 +21,25 @@ export const createSettingsRepository = (settingsStore: KeyValueStore) => {
     const replayDirectory = await selectSetting("replayDirectory");
     const username = await selectSetting("username");
     return { replayDirectory, username };
+  };
+
+  /**
+   * Whether the stored replays predate the current `Replay` shape. A library
+   * written before the version was recorded at all reads as 0, which is the
+   * pre-`mode` case and does need the re-import.
+   */
+  const needsReplayBackfill = async () => {
+    const stored = Number(await selectSetting("schemaVersion")) || 0;
+    return stored < REPLAY_SCHEMA_VERSION;
+  };
+
+  /**
+   * Stamped only once an import has actually re-read the directory. Writing it
+   * on any finished load would mark the backfill done for someone whose replay
+   * directory had merely been moved, and they would never get it.
+   */
+  const markReplayBackfillDone = async () => {
+    await upsertSetting("schemaVersion", String(REPLAY_SCHEMA_VERSION));
   };
 
   const upsertSetting = async (key: SETTINGS_KEYS, value: string) => {
@@ -25,33 +54,13 @@ export const createSettingsRepository = (settingsStore: KeyValueStore) => {
     }
   };
 
-  /**
-   * Returns the configured username, working one out only if there isn't one.
-   *
-   * `suggestUsername` is a thunk on purpose: the only suggestion the app has is
-   * `getMostCommonUser`, which reads every replay in the library. Passing its
-   * result in meant paying for that scan on every launch to then discard it.
-   */
-  const updateUsernameIfEmpty = async (
-    suggestUsername: () => Promise<string>,
-  ) => {
-    const currentUsername = await selectSetting("username");
-    if (currentUsername) return currentUsername;
-
-    // Empty when nothing in the library identifies the user yet — a first run
-    // over a directory with no valid replays.
-    const username = await suggestUsername();
-    if (username) await upsertSetting("username", username.toUpperCase());
-
-    return await selectSetting("username");
-  };
-
   return {
     selectSetting,
     selectAllSettings,
     upsertSetting,
     upsertSettings,
-    updateUsernameIfEmpty,
+    needsReplayBackfill,
+    markReplayBackfillDone,
   };
 };
 
