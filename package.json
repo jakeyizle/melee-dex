@@ -21,6 +21,8 @@
     "pretest:e2e": "vite build --mode=test",
     "test:e2e": "vitest run",
     "test:coverage": "vitest run --config vitest.unit.config.ts --coverage",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "postinstall": "install-electron"
   },
   "dependencies": {

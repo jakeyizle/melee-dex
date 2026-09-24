@@ -59,7 +59,7 @@ describe("storing and retrieving replays", () => {
     expect(await replaysStore.length()).toBe(0);
   });
 
-  it("reads back a replay by name", async () =>{
+  it("reads back a replay by name", async () => {
     const { repo } = setup();
     const replay = makeReplay({ name: "Game_A.slp" });
     await repo.insertReplays([replay]);
@@ -126,9 +126,15 @@ describe("working out who the user is", () => {
     // be testing what it says — with one replay each they tie, and the answer
     // comes from the tie-break below instead.
     await seedReplays(repo, [
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
+      }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")],
+      }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")],
+      }),
     ]);
 
     expect(await repo.getMostCommonUser([OPPONENT, USER])).toBe(USER);
@@ -138,8 +144,12 @@ describe("working out who the user is", () => {
   it("falls back to the most frequent player overall when neither candidate is known", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
+      }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")],
+      }),
     ]);
 
     expect(await repo.getMostCommonUser(["NONE#000", "ALSO#000"])).toBe(USER);
@@ -150,7 +160,9 @@ describe("working out who the user is", () => {
   it("returns the first candidate when both appear equally often", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
+      }),
     ]);
 
     expect(await repo.getMostCommonUser([USER, OPPONENT])).toBe(USER);
@@ -209,7 +221,9 @@ describe("deleteAllReplays", () => {
   it("empties both the accepted and the rejected replays", async () => {
     const { repo } = setup();
     await seedReplays(repo, [makeMatch({ isWin: true })]);
-    await repo.insertBadReplays([{ name: "Bad.slp", path: "C:/Slippi/Bad.slp" }]);
+    await repo.insertBadReplays([
+      { name: "Bad.slp", path: "C:/Slippi/Bad.slp" },
+    ]);
 
     await repo.deleteAllReplays();
 
@@ -233,9 +247,15 @@ describe("getUserCandidates", () => {
   it("ranks connect codes by how often they appear", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
+      }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")],
+      }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")],
+      }),
     ]);
 
     expect(await repo.getUserCandidates(5)).toEqual([
@@ -248,8 +268,12 @@ describe("getUserCandidates", () => {
   it("returns at most the number asked for", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
+      }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")],
+      }),
     ]);
 
     expect(await repo.getUserCandidates(1)).toEqual([
@@ -277,8 +301,12 @@ describe("identifyUserFromLiveGame", () => {
   it("is confident when one player appears in more stored replays", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")] }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
+      }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(THIRD_PLAYER, "9")],
+      }),
     ]);
 
     expect(await repo.identifyUserFromLiveGame([OPPONENT, USER])).toEqual({
@@ -293,20 +321,26 @@ describe("identifyUserFromLiveGame", () => {
   it("is not confident when the two players are indistinguishable", async () => {
     const { repo } = setup();
     await seedReplays(repo, [
-      makeReplay({ players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")] }),
+      makeReplay({
+        players: [makePlayer(USER, "0"), makePlayer(OPPONENT, "9")],
+      }),
     ]);
 
-    expect(await repo.identifyUserFromLiveGame([USER, OPPONENT])).toMatchObject({
-      isConfident: false,
-    });
+    expect(await repo.identifyUserFromLiveGame([USER, OPPONENT])).toMatchObject(
+      {
+        isConfident: false,
+      },
+    );
   });
 
   it("is not confident when the library is empty", async () => {
     const { repo } = setup();
 
-    expect(await repo.identifyUserFromLiveGame([USER, OPPONENT])).toMatchObject({
-      isConfident: false,
-    });
+    expect(await repo.identifyUserFromLiveGame([USER, OPPONENT])).toMatchObject(
+      {
+        isConfident: false,
+      },
+    );
   });
 });
 

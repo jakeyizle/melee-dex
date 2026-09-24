@@ -96,7 +96,10 @@ describe("getRankProfile", () => {
       // game. Without the in-flight map this is two requests for one answer.
       fetchMock.mockResolvedValue(jsonResponse(userPayload()));
 
-      await Promise.all([getRankProfile("KENJ#707"), getRankProfile("KENJ#707")]);
+      await Promise.all([
+        getRankProfile("KENJ#707"),
+        getRankProfile("KENJ#707"),
+      ]);
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
@@ -131,7 +134,12 @@ describe("getRankProfile", () => {
     it("treats a user with no ranked profile as a miss", async () => {
       fetchMock.mockResolvedValue(
         jsonResponse({
-          data: { getUser: { connectCode: { code: "A#1" }, rankedNetplayProfile: null } },
+          data: {
+            getUser: {
+              connectCode: { code: "A#1" },
+              rankedNetplayProfile: null,
+            },
+          },
         }),
       );
 
@@ -222,7 +230,9 @@ describe("getRankProfile", () => {
     describe("errors the endpoint reports at HTTP 200", () => {
       const graphqlError = (code?: string) =>
         jsonResponse({
-          errors: [{ message: "boom", ...(code ? { extensions: { code } } : {}) }],
+          errors: [
+            { message: "boom", ...(code ? { extensions: { code } } : {}) },
+          ],
           data: { getUser: null },
         });
 

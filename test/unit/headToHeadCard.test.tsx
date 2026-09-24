@@ -2,7 +2,13 @@
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { cleanup, screen } from "@testing-library/react";
 import { renderComponent } from "../helpers/renderComponent";
-import { makeMatch, makeReplay, makePlayer, USER, OPPONENT } from "../helpers/makeReplay";
+import {
+  makeMatch,
+  makeReplay,
+  makePlayer,
+  USER,
+  OPPONENT,
+} from "../helpers/makeReplay";
 import { useReplayStore } from "@/replayStore";
 import { buildStats, getCurrentHeadToHeadStats } from "@/utils/statUtils";
 import { HeadToHeadCard } from "@/components/DashboardPage/LiveMatchDisplay/NewHeadToHeadCard";
@@ -163,7 +169,10 @@ describe("HeadToHeadCard — Tier 1, an opponent already played", () => {
   it("surfaces names they have played under before", () => {
     startGame([
       makeReplay({
-        players: [makePlayer(USER, "2"), { ...makePlayer(OPPONENT, "9"), name: "oldtag" }],
+        players: [
+          makePlayer(USER, "2"),
+          { ...makePlayer(OPPONENT, "9"), name: "oldtag" },
+        ],
         winnerConnectCode: USER,
       }),
     ]);
@@ -176,7 +185,10 @@ describe("HeadToHeadCard — Tier 1, an opponent already played", () => {
   it("says nothing about names when the current one is all it has seen", () => {
     startGame([
       makeReplay({
-        players: [makePlayer(USER, "2"), { ...makePlayer(OPPONENT, "9"), name: "hyruler" }],
+        players: [
+          makePlayer(USER, "2"),
+          { ...makePlayer(OPPONENT, "9"), name: "hyruler" },
+        ],
         winnerConnectCode: USER,
       }),
     ]);
@@ -190,8 +202,18 @@ describe("HeadToHeadCard — Tier 1, an opponent already played", () => {
 describe("HeadToHeadCard — Tier 2, this game's context", () => {
   it("reports the record in this matchup and on this stage", () => {
     startGame([
-      makeMatch({ isWin: true, userCharacterId: "2", opponentCharacterId: "9", stageId: "31" }),
-      makeMatch({ isWin: false, userCharacterId: "2", opponentCharacterId: "9", stageId: "31" }),
+      makeMatch({
+        isWin: true,
+        userCharacterId: "2",
+        opponentCharacterId: "9",
+        stageId: "31",
+      }),
+      makeMatch({
+        isWin: false,
+        userCharacterId: "2",
+        opponentCharacterId: "9",
+        stageId: "31",
+      }),
     ]);
 
     renderComponent(<HeadToHeadCard />);
@@ -204,7 +226,12 @@ describe("HeadToHeadCard — Tier 2, this game's context", () => {
   // to say which rather than showing a misleading zero.
   it("calls out a matchup and a stage played for the first time", () => {
     startGame([
-      makeMatch({ isWin: true, userCharacterId: "20", opponentCharacterId: "9", stageId: "2" }),
+      makeMatch({
+        isWin: true,
+        userCharacterId: "20",
+        opponentCharacterId: "9",
+        stageId: "2",
+      }),
     ]);
 
     renderComponent(<HeadToHeadCard />);

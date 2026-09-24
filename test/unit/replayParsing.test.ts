@@ -249,7 +249,10 @@ describe("isReplayValid", () => {
     { field: "path", replay: makeReplay({ path: "" }) },
     { field: "date", replay: makeReplay({ date: "" }) },
     { field: "stageId", replay: makeReplay({ stageId: "" }) },
-    { field: "winnerConnectCode", replay: makeReplay({ winnerConnectCode: "" }) },
+    {
+      field: "winnerConnectCode",
+      replay: makeReplay({ winnerConnectCode: "" }),
+    },
     {
       field: "player one connect code",
       replay: makeReplay({
@@ -350,7 +353,9 @@ describe("stats built from the real replay library", () => {
 
 describe("getReplayMode", () => {
   it("names only ranked matches as ranked", () => {
-    expect(getReplayMode("mode.ranked-2025-04-18T03:01:45.00-3")).toBe("ranked");
+    expect(getReplayMode("mode.ranked-2025-04-18T03:01:45.00-3")).toBe(
+      "ranked",
+    );
   });
 
   it("treats unranked, direct and unknown modes alike", () => {

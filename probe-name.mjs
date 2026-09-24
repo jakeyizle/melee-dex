@@ -1,6 +1,9 @@
 import { _electron as electron } from "playwright";
-const app = await electron.launch({ args: [".", "--no-sandbox"], cwd: process.cwd(),
-  env: { ...process.env, NODE_ENV: "development" } });
+const app = await electron.launch({
+  args: [".", "--no-sandbox"],
+  cwd: process.cwd(),
+  env: { ...process.env, NODE_ENV: "development" },
+});
 const info = await app.evaluate(({ app }) => ({
   name: app.getName(),
   userData: app.getPath("userData"),

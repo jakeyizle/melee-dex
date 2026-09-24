@@ -24,8 +24,7 @@ const DEFAULT_STATE: WindowState = {
   isMaximized: true,
 };
 
-const stateFile = () =>
-  path.join(app.getPath("userData"), "window-state.json");
+const stateFile = () => path.join(app.getPath("userData"), "window-state.json");
 
 const isVisibleOnSomeScreen = (state: WindowState) => {
   if (state.x === undefined || state.y === undefined) return false;
@@ -52,14 +51,8 @@ export const loadWindowState = (): WindowState => {
   }
 
   const state: WindowState = {
-    width: Math.max(
-      MIN_WIDTH,
-      Number(saved.width) || DEFAULT_STATE.width,
-    ),
-    height: Math.max(
-      MIN_HEIGHT,
-      Number(saved.height) || DEFAULT_STATE.height,
-    ),
+    width: Math.max(MIN_WIDTH, Number(saved.width) || DEFAULT_STATE.width),
+    height: Math.max(MIN_HEIGHT, Number(saved.height) || DEFAULT_STATE.height),
     x: typeof saved.x === "number" ? saved.x : undefined,
     y: typeof saved.y === "number" ? saved.y : undefined,
     isMaximized: saved.isMaximized !== false,

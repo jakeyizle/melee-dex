@@ -50,7 +50,9 @@ const suite = process.platform === "linux" ? describe.skip : describe;
 suite("importing across several parser processes", () => {
   beforeAll(async () => {
     userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "meleedex-pool-"));
-    replayDir = fs.mkdtempSync(path.join(os.tmpdir(), "meleedex-pool-replays-"));
+    replayDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "meleedex-pool-replays-"),
+    );
     const source = path.join(testdata, SOURCE);
     for (let index = 0; index < COPIES; index++) {
       fs.copyFileSync(
@@ -162,10 +164,7 @@ suite("importing across several parser processes", () => {
 
   test("the whole library is counted into the stats", async () => {
     await page.getByRole("link", { name: "Library" }).click();
-    await page
-      .getByRole("button", { name: /#\d/ })
-      .first()
-      .click();
+    await page.getByRole("button", { name: /#\d/ }).first().click();
 
     await expect
       .poll(

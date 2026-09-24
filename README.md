@@ -29,7 +29,7 @@ background and installs the next time you close the app.
 ## First run
 
 1. **Point it at your replays.** Open the Slippi Launcher, click the gear icon,
-   choose **Replays**, and copy the path under *Root SLP Directory*. Paste that
+   choose **Replays**, and copy the path under _Root SLP Directory_. Paste that
    into MeleeDex's Settings.
 2. **Wait for the import.** Every replay is read once. A large library takes a
    while, and the progress bar tells you how far along it is.

@@ -143,15 +143,15 @@ const requestProfile = async (
     if (body.errors?.length) {
       const codes = body.errors.map((error) => error.extensions?.code);
       // The GraphQL-layer equivalent of a 403, and obeyed just as immediately.
-      if (codes.some((code) => code === "UNAUTHORIZED" || code === "FORBIDDEN")) {
+      if (
+        codes.some((code) => code === "UNAUTHORIZED" || code === "FORBIDDEN")
+      ) {
         disableForSession(`GraphQL ${codes.join(", ")}`);
         return null;
       }
       // Anything else is a failure, not an answer: it feeds the breaker, and
       // throwing is what keeps it out of the cache.
-      throw new Error(
-        `GraphQL error: ${body.errors[0]?.message ?? "unknown"}`,
-      );
+      throw new Error(`GraphQL error: ${body.errors[0]?.message ?? "unknown"}`);
     }
 
     // A reachable endpoint answered, so the session is healthy even if this

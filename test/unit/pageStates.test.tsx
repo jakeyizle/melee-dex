@@ -34,9 +34,8 @@ vi.mock("@/db/settings", () => ({
 const { useReplayStore } = await import("@/replayStore");
 const { DashboardPage } = await import("@/components/DashboardPage");
 const { LibraryPage } = await import("@/components/LibraryPage");
-const { LiveMatchDisplay } = await import(
-  "@/components/DashboardPage/LiveMatchDisplay"
-);
+const { LiveMatchDisplay } =
+  await import("@/components/DashboardPage/LiveMatchDisplay");
 
 const liveGame = {
   stageId: "31",
@@ -205,7 +204,10 @@ describe("LibraryPage — which card the any-time route shows", () => {
 
 describe("LiveMatchDisplay — a game with nobody identified", () => {
   it("asks who the user is rather than showing a record for nobody", () => {
-    useReplayStore.setState({ userConnectCode: "", currentReplayInfo: liveGame });
+    useReplayStore.setState({
+      userConnectCode: "",
+      currentReplayInfo: liveGame,
+    });
 
     renderComponent(<LiveMatchDisplay />);
 
@@ -214,7 +216,10 @@ describe("LiveMatchDisplay — a game with nobody identified", () => {
   });
 
   it("shows both cards once the user is known", async () => {
-    useReplayStore.setState({ userConnectCode: USER, currentReplayInfo: liveGame });
+    useReplayStore.setState({
+      userConnectCode: USER,
+      currentReplayInfo: liveGame,
+    });
 
     renderComponent(<LiveMatchDisplay />);
 

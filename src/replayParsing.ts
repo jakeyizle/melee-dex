@@ -16,8 +16,7 @@ export type RejectReason =
 export type RejectedReplay = ReplayFileInfo & { reason: RejectReason };
 
 export type ParseResult =
-  | { ok: true; replay: Replay }
-  | { ok: false; reason: RejectReason };
+  { ok: true; replay: Replay } | { ok: false; reason: RejectReason };
 
 /** One player's state on the last frame of a game. */
 export type FinalStock = {

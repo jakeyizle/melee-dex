@@ -80,7 +80,9 @@ describe("getStageNameFromId", () => {
   });
 
   it("names the legal stages correctly", () => {
-    expect(LEGAL_STAGE_IDS.map((id) => getStageNameFromId(id.toString()))).toEqual([
+    expect(
+      LEGAL_STAGE_IDS.map((id) => getStageNameFromId(id.toString())),
+    ).toEqual([
       "Fountain of Dreams",
       "Pokémon Stadium",
       "Yoshi's Story",

@@ -43,11 +43,14 @@ vi.mock("../../electron/main/vite_constants", () => ({
   WORKER_ENTRY: "replayParser.js",
 }));
 
-const { getReplayFiles, getNumberOfWorkers } = await import(
-  "../../electron/main/utils"
-);
+const { getReplayFiles, getNumberOfWorkers } =
+  await import("../../electron/main/utils");
 
-const entry = (name: string, parentPath = "C:/Slippi", isDirectory = false) => ({
+const entry = (
+  name: string,
+  parentPath = "C:/Slippi",
+  isDirectory = false,
+) => ({
   name,
   parentPath,
   isDirectory: () => isDirectory,

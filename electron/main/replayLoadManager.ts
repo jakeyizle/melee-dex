@@ -264,8 +264,9 @@ export class ReplayLoadManager {
     this.currentReplaysLoaded += batch;
     const timeSpentLoading = Date.now() - this.startTimestamp;
     const replaysPerSecond =
-      Math.round((this.currentReplaysLoaded / (timeSpentLoading / 1000)) * 100) /
-      100;
+      Math.round(
+        (this.currentReplaysLoaded / (timeSpentLoading / 1000)) * 100,
+      ) / 100;
 
     mainWindow?.webContents.send("update-replay-load-progress", {
       totalReplaysToLoad: this.totalReplaysToLoad,

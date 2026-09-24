@@ -46,8 +46,14 @@ export const OverallStatsCard = () => {
     opponentSpecificStats,
     (a, b) => b.overallStat.totalCount - a.overallStat.totalCount,
   );
-  const victim = best(opponentSpecificStats, (a, b) => netRecord(b) - netRecord(a));
-  const rival = best(opponentSpecificStats, (a, b) => netRecord(a) - netRecord(b));
+  const victim = best(
+    opponentSpecificStats,
+    (a, b) => netRecord(b) - netRecord(a),
+  );
+  const rival = best(
+    opponentSpecificStats,
+    (a, b) => netRecord(a) - netRecord(b),
+  );
 
   const mostCommonMatchup = best(
     matchupStats,
@@ -57,8 +63,14 @@ export const OverallStatsCard = () => {
     matchupStats,
     (a, b) => a.totalCount - b.totalCount,
   );
-  const bestMatchup = best(matchupStats, (a, b) => netMatchup(b) - netMatchup(a));
-  const worstMatchup = best(matchupStats, (a, b) => netMatchup(a) - netMatchup(b));
+  const bestMatchup = best(
+    matchupStats,
+    (a, b) => netMatchup(b) - netMatchup(a),
+  );
+  const worstMatchup = best(
+    matchupStats,
+    (a, b) => netMatchup(a) - netMatchup(b),
+  );
 
   return (
     <Card

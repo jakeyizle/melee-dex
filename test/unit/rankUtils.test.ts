@@ -39,12 +39,24 @@ describe("getRankTier", () => {
     const names = floors.map((floor) => getRankTier(floor, null, PLACED));
 
     expect(names).toEqual([
-      "Bronze 1", "Bronze 2", "Bronze 3",
-      "Silver 1", "Silver 2", "Silver 3",
-      "Gold 1", "Gold 2", "Gold 3",
-      "Platinum 1", "Platinum 2", "Platinum 3",
-      "Diamond 1", "Diamond 2", "Diamond 3",
-      "Master 1", "Master 2", "Master 3",
+      "Bronze 1",
+      "Bronze 2",
+      "Bronze 3",
+      "Silver 1",
+      "Silver 2",
+      "Silver 3",
+      "Gold 1",
+      "Gold 2",
+      "Gold 3",
+      "Platinum 1",
+      "Platinum 2",
+      "Platinum 3",
+      "Diamond 1",
+      "Diamond 2",
+      "Diamond 3",
+      "Master 1",
+      "Master 2",
+      "Master 3",
     ]);
     // And the rating just under each floor belongs to the tier below it.
     floors.slice(1).forEach((floor, index) => {
@@ -81,10 +93,12 @@ describe("getRankTier", () => {
     });
 
     it("stays pending up to the last placement set", () => {
-      expect(
-        getRankTier(1500, null, PLACEMENT_MATCHES_REQUIRED - 1),
-      ).toBe(PENDING_TIER);
-      expect(getRankTier(1500, null, PLACEMENT_MATCHES_REQUIRED)).toBe("Gold 1");
+      expect(getRankTier(1500, null, PLACEMENT_MATCHES_REQUIRED - 1)).toBe(
+        PENDING_TIER,
+      );
+      expect(getRankTier(1500, null, PLACEMENT_MATCHES_REQUIRED)).toBe(
+        "Gold 1",
+      );
     });
 
     it("outranks a global placement", () => {

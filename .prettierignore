@@ -1,0 +1,6 @@
+# Generated output. `coverage/` is committed, so without this a format run
+# would rewrite every generated report alongside the source.
+coverage
+dist
+dist-electron
+release

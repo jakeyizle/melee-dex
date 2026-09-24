@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { installFakeIpcRenderer, FakeIpcRenderer } from "../helpers/fakeIpcRenderer";
+import {
+  installFakeIpcRenderer,
+  FakeIpcRenderer,
+} from "../helpers/fakeIpcRenderer";
 import { makeMatch, USER, OPPONENT } from "../helpers/makeReplay";
 import { buildStats } from "@/utils/statUtils";
 
@@ -44,9 +47,8 @@ vi.mock("@/db/settings", () => ({
 
 const db = await import("@/db/replays");
 const settings = await import("@/db/settings");
-const { useReplayStore, setupReplayStoreIpcListeners } = await import(
-  "@/replayStore"
-);
+const { useReplayStore, setupReplayStoreIpcListeners } =
+  await import("@/replayStore");
 
 const initialState = useReplayStore.getState();
 
@@ -221,10 +223,12 @@ describe("recent games against the live opponent", () => {
   // game starts first, the list it returns is for the previous opponent.
   it("drops a result that arrives after the next game has started", async () => {
     useReplayStore.setState({ userConnectCode: USER });
-    vi.mocked(db.selectRecentReplaysAgainst).mockImplementationOnce(async () => {
-      useReplayStore.setState({ currentLiveFileName: "Game_Newer.slp" });
-      return [makeMatch({ isWin: true })];
-    });
+    vi.mocked(db.selectRecentReplaysAgainst).mockImplementationOnce(
+      async () => {
+        useReplayStore.setState({ currentLiveFileName: "Game_Newer.slp" });
+        return [makeMatch({ isWin: true })];
+      },
+    );
 
     await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
 
@@ -408,7 +412,9 @@ describe("a finished game updating the stats", () => {
   // from the code `newStatInfo` was folded against, and count the game for the
   // wrong player.
   it("counts the game for whoever the running stats were built for", async () => {
-    vi.mocked(db.selectReplay).mockResolvedValueOnce(makeMatch({ isWin: true }));
+    vi.mocked(db.selectReplay).mockResolvedValueOnce(
+      makeMatch({ isWin: true }),
+    );
     useReplayStore.setState({
       newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
       userConnectCode: USER,
@@ -444,7 +450,9 @@ describe("a finished game updating the stats", () => {
   });
 
   it("folds the newly finished replay into the running stats", async () => {
-    vi.mocked(db.selectReplay).mockResolvedValueOnce(makeMatch({ isWin: true }));
+    vi.mocked(db.selectReplay).mockResolvedValueOnce(
+      makeMatch({ isWin: true }),
+    );
     useReplayStore.setState({
       newStatInfo: buildStats([makeMatch({ isWin: true })], USER),
       userConnectCode: USER,
@@ -610,10 +618,7 @@ describe("rank lookups for the live game", () => {
 
   it("publishes the live view without waiting for the lookup", async () => {
     // Never resolves: the card must already be on screen.
-    ipcRenderer.setInvokeResult(
-      "get-rank-profile",
-      new Promise(() => {}),
-    );
+    ipcRenderer.setInvokeResult("get-rank-profile", new Promise(() => {}));
 
     await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
 

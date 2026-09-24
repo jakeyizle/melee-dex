@@ -45,9 +45,10 @@ export class FakeParserWorker {
   }
 
   /** Answers the batch it is holding: everything parsed unless told otherwise. */
-  finishBatch(
-    { replays = [], badReplays }: { replays?: Replay[]; badReplays?: ReplayFileInfo[] } = {},
-  ) {
+  finishBatch({
+    replays = [],
+    badReplays,
+  }: { replays?: Replay[]; badReplays?: ReplayFileInfo[] } = {}) {
     const files = this.inFlight ?? [];
     const bad = badReplays ?? (replays.length > 0 ? [] : files);
     this.inFlight = null;

@@ -86,7 +86,9 @@ describe("SettingsPage — the connect code", () => {
     await waitFor(() => expect(selectAllSettings).toHaveBeenCalled());
 
     await userEvent.type(connectCodeField(), "JAKE#193");
-    await userEvent.click(screen.getByRole("button", { name: "Save Settings" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save Settings" }),
+    );
 
     expect(confirmUserConnectCode).toHaveBeenCalledWith("JAKE#193");
   });
@@ -100,7 +102,9 @@ describe("SettingsPage — the connect code", () => {
     });
 
     renderComponent(<SettingsPage />);
-    await waitFor(() => expect(connectCodeField()).toHaveProperty("value", USER));
+    await waitFor(() =>
+      expect(connectCodeField()).toHaveProperty("value", USER),
+    );
 
     await userEvent.click(connectCodeField());
     await userEvent.tab();
@@ -173,7 +177,9 @@ describe("SettingsPage — the connect code has to look like one", () => {
     await waitFor(() => expect(selectAllSettings).toHaveBeenCalled());
 
     await userEvent.type(connectCodeField(), "nope");
-    await userEvent.click(screen.getByRole("button", { name: "Save Settings" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save Settings" }),
+    );
 
     expect(
       screen.getByText(/That does not look like a connect code/),
@@ -201,7 +207,9 @@ describe("SettingsPage — the replay directory", () => {
     renderComponent(<SettingsPage />);
     await waitFor(() => expect(selectAllSettings).toHaveBeenCalled());
 
-    await userEvent.click(screen.getByRole("button", { name: "Save Settings" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save Settings" }),
+    );
 
     expect(screen.getByText("Please select a replay directory")).toBeDefined();
   });

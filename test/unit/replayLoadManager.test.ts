@@ -26,8 +26,7 @@ const state = vi.hoisted(() => ({
   watchedDirectories: [] as string[],
   directoryExists: true,
   watchListener: null as
-    | null
-    | ((event: string, filename: string | null) => void),
+    null | ((event: string, filename: string | null) => void),
   /** What the stubbed SlippiGame reports for the next file the watcher sees. */
   game: {
     winners: [{ playerIndex: 0 }] as unknown[],
@@ -121,7 +120,8 @@ const freshManager = async () => {
 const workers = () => FakeParserWorker.instances;
 const channelsSent = () => sent.map((message) => message.channel);
 const lastSent = (channel: string) =>
-  [...sent].reverse().find((message) => message.channel === channel)?.payload as any;
+  [...sent].reverse().find((message) => message.channel === channel)
+    ?.payload as any;
 
 beforeEach(() => {
   FakeParserWorker.reset();
@@ -156,7 +156,9 @@ describe("beginLoadingReplayDirectory — whether an import starts", () => {
   it("declines without a directory", async () => {
     const manager = await freshManager();
 
-    expect(await manager.beginLoadingReplayDirectory(undefined, [])).toBe(false);
+    expect(await manager.beginLoadingReplayDirectory(undefined, [])).toBe(
+      false,
+    );
     expect(workers()).toHaveLength(0);
   });
 
@@ -164,8 +166,12 @@ describe("beginLoadingReplayDirectory — whether an import starts", () => {
     const manager = await freshManager();
     state.replayFiles = files(3);
 
-    expect(await manager.beginLoadingReplayDirectory("C:/Slippi", [])).toBe(true);
-    expect(await manager.beginLoadingReplayDirectory("C:/Slippi", [])).toBe(false);
+    expect(await manager.beginLoadingReplayDirectory("C:/Slippi", [])).toBe(
+      true,
+    );
+    expect(await manager.beginLoadingReplayDirectory("C:/Slippi", [])).toBe(
+      false,
+    );
     expect(workers()).toHaveLength(1);
   });
 
@@ -175,7 +181,9 @@ describe("beginLoadingReplayDirectory — whether an import starts", () => {
     const manager = await freshManager();
     state.readThrows = true;
 
-    expect(await manager.beginLoadingReplayDirectory("C:/Slippi", [])).toBe(false);
+    expect(await manager.beginLoadingReplayDirectory("C:/Slippi", [])).toBe(
+      false,
+    );
     expect(channelsSent()).toContain("end-loading-replays");
   });
 
@@ -465,7 +473,10 @@ describe("finishing a load", () => {
       for (const worker of busy) {
         worker.finishBatch({ replays: [makeReplay()] });
         const payload = lastSent("insert-parsed-replays");
-        manager.onReplaysInserted({ token: payload.token, count: payload.count });
+        manager.onReplaysInserted({
+          token: payload.token,
+          count: payload.count,
+        });
       }
     }
   };
@@ -710,9 +721,8 @@ describe("the live watcher", () => {
       });
     }
 
-    const ingested = (
-      manager as unknown as { ingestedLiveFiles: Set<string> }
-    ).ingestedLiveFiles;
+    const ingested = (manager as unknown as { ingestedLiveFiles: Set<string> })
+      .ingestedLiveFiles;
 
     expect(ingested.size).toBeLessThanOrEqual(200);
     // Still doing its job for anything recent, which is all it is for.

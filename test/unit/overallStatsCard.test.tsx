@@ -89,10 +89,22 @@ describe("OverallStatsCard", () => {
       newStatInfo: buildStats(
         [
           // Fox (2) vs Marth (9), played twice and won both.
-          makeMatch({ isWin: true, userCharacterId: "2", opponentCharacterId: "9" }),
-          makeMatch({ isWin: true, userCharacterId: "2", opponentCharacterId: "9" }),
+          makeMatch({
+            isWin: true,
+            userCharacterId: "2",
+            opponentCharacterId: "9",
+          }),
+          makeMatch({
+            isWin: true,
+            userCharacterId: "2",
+            opponentCharacterId: "9",
+          }),
           // Falco (20) vs Marth, played once and lost.
-          makeMatch({ isWin: false, userCharacterId: "20", opponentCharacterId: "9" }),
+          makeMatch({
+            isWin: false,
+            userCharacterId: "20",
+            opponentCharacterId: "9",
+          }),
         ],
         USER,
       ),

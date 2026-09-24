@@ -5,7 +5,13 @@ import {
   createEmptyFullStats,
   getModeStat,
 } from "@/utils/statUtils";
-import { makeReplay, makeMatch, makePlayer, USER, OPPONENT } from "../helpers/makeReplay";
+import {
+  makeReplay,
+  makeMatch,
+  makePlayer,
+  USER,
+  OPPONENT,
+} from "../helpers/makeReplay";
 
 const THIRD_PLAYER = "THRD#003";
 
@@ -69,7 +75,11 @@ describe("buildStats — bucketing", () => {
     const fd = stats.stats.stageStats.find((s) => s.stageId === "2");
 
     expect(stats.stats.stageStats).toHaveLength(2);
-    expect(battlefield).toMatchObject({ totalCount: 2, winCount: 1, lossCount: 1 });
+    expect(battlefield).toMatchObject({
+      totalCount: 2,
+      winCount: 1,
+      lossCount: 1,
+    });
     expect(fd).toMatchObject({ totalCount: 1, winCount: 1, lossCount: 0 });
   });
 
@@ -99,8 +109,16 @@ describe("buildStats — bucketing", () => {
   it("treats the same matchup on different stages as different records", () => {
     const stats = buildStats(
       [
-        makeMatch({ userCharacterId: "0", opponentCharacterId: "9", stageId: "31" }),
-        makeMatch({ userCharacterId: "0", opponentCharacterId: "9", stageId: "2" }),
+        makeMatch({
+          userCharacterId: "0",
+          opponentCharacterId: "9",
+          stageId: "31",
+        }),
+        makeMatch({
+          userCharacterId: "0",
+          opponentCharacterId: "9",
+          stageId: "2",
+        }),
       ],
       USER,
     );
@@ -122,13 +140,13 @@ describe("buildStats — per-opponent records", () => {
       USER,
     );
 
-    expect(stats.opponentSpecificStats.map((o) => o.opponentConnectCode)).toEqual([
-      OPPONENT,
-      THIRD_PLAYER,
-    ]);
     expect(
-      stats.opponentSpecificStats.find((o) => o.opponentConnectCode === OPPONENT)
-        ?.overallStat.totalCount,
+      stats.opponentSpecificStats.map((o) => o.opponentConnectCode),
+    ).toEqual([OPPONENT, THIRD_PLAYER]);
+    expect(
+      stats.opponentSpecificStats.find(
+        (o) => o.opponentConnectCode === OPPONENT,
+      )?.overallStat.totalCount,
     ).toBe(2);
   });
 

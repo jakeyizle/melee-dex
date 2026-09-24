@@ -13,7 +13,11 @@ const liveGame = (args: {
 }): CurrentReplayInfo => ({
   stageId: args.stageId ?? "31",
   players: args.players ?? [
-    { connectCode: USER, name: "USER", characterId: args.userCharacterId ?? "0" },
+    {
+      connectCode: USER,
+      name: "USER",
+      characterId: args.userCharacterId ?? "0",
+    },
     {
       connectCode: OPPONENT,
       name: "OPPO",
@@ -102,7 +106,9 @@ describe("getCurrentHeadToHeadStats — the reported record", () => {
 
     const result = getCurrentHeadToHeadStats(stats, liveGame({}), USER);
 
-    const falcon = result?.userCharacterUsages.find((u) => u.characterId === "0");
+    const falcon = result?.userCharacterUsages.find(
+      (u) => u.characterId === "0",
+    );
     const fox = result?.userCharacterUsages.find((u) => u.characterId === "2");
 
     expect(falcon).toMatchObject({ playCount: 2 });

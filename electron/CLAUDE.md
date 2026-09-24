@@ -123,7 +123,7 @@ actually under test.
 
 Two things to know before adding to them. `ReplayLoadManager` is a singleton, so each test clears
 its private static rather than calling `vi.resetModules()` — resetting the registry would hand the
-mock factory a *second* copy of the fake worker module, and the instances the test inspects would
+mock factory a _second_ copy of the fake worker module, and the instances the test inspects would
 not be the ones the pool built. And `NUM_CORES` in `utils.ts` is read once at import, so a
 different machine is simulated by reloading that module.
 
@@ -154,7 +154,7 @@ card. Nothing is faked there but the folder picker.
 - `slippi-js` is CJS and externalized from the main bundle, so it is pulled in with `require()`,
   not an ESM import, and resolved from `node_modules` at runtime. The worker does the same.
 - It is required as **`@slippi/slippi-js/node`**, never the bare package name. Since v8 the default
-  entry is the *browser* build, whose `SlippiGame` takes a `BinaryLike` rather than a file path, so
+  entry is the _browser_ build, whose `SlippiGame` takes a `BinaryLike` rather than a file path, so
   the bare id would typecheck and then fail on every replay. The subpath is why `tsconfig.json`
   needs `"moduleResolution": "Bundler"` — node10 resolution does not read the `exports` field.
   `test/unit/replayParser.test.ts` fakes `createRequire` and matches the id literally, so it has to
@@ -169,7 +169,7 @@ card. Nothing is faked there but the folder picker.
   heap limit and no memory-pressure signal. Measured as inert in Electron 33 and re-measured on
   Electron 44 (Node 24, V8 15.2) with the same answer: `execArgv`, `NODE_OPTIONS` and
   `app.commandLine.appendSwitch("js-flags", ...)` all leave `heap_size_limit` at ~4096. On 44 an
-  `execArgv` handed to `utilityProcess.fork` *does* now reach the child's `process.execArgv` — but
+  `execArgv` handed to `utilityProcess.fork` _does_ now reach the child's `process.execArgv` — but
   V8 still ignores it, so watching the flag arrive is not the same as it taking effect. A forced
   GC frees the heap (69MB → 25MB) without returning pages to the OS
   (RSS 159 → 158). It plateaus rather than leaking, so **worker count is the only lever** — and
@@ -197,5 +197,5 @@ card. Nothing is faked there but the folder picker.
 - `windowState.ts` persists size and position to `window-state.json` in `userData`. It refuses to
   restore a window smaller than `MIN_WIDTH`/`MIN_HEIGHT`, or one positioned on a monitor that is
   no longer attached — that failure looks exactly like the app not starting. It saves
-  `getNormalBounds()`, so a maximized window remembers the size to restore *to*.
+  `getNormalBounds()`, so a maximized window remembers the size to restore _to_.
 - `vite.config.ts` `rmSync`s `dist-electron` every time the config loads.

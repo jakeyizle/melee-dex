@@ -231,7 +231,9 @@ export const createReplayRepository = (
     // a long history against one opponent would otherwise be materialized in
     // full just to throw all but `limit` of it away.
     const trim = () => {
-      newest.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      newest.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
       newest.length = Math.min(newest.length, limit);
     };
 

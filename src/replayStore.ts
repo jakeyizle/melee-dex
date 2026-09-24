@@ -131,10 +131,13 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
     // already running, or the directory could not be read — no
     // `end-loading-replays` is coming, and showing the progress bar would
     // leave it up for the rest of the session.
-    const hasStarted = await window.ipcRenderer.invoke("begin-loading-replays", {
-      replayDirectory,
-      existingReplayNames,
-    });
+    const hasStarted = await window.ipcRenderer.invoke(
+      "begin-loading-replays",
+      {
+        replayDirectory,
+        existingReplayNames,
+      },
+    );
     // Only a load that actually started has re-read the directory, so only that
     // one can be allowed to stamp the schema version when it ends. A declined
     // load — a directory that has been moved, or one with nothing in it — must
@@ -342,7 +345,8 @@ export const setupReplayStoreIpcListeners = () => {
   // actually accepted and stored gets one, so there is nothing to fold in
   // without it.
   window.ipcRenderer.on("update-stats", async (_event, args) => {
-    const replayName = (args as { replayName?: string } | undefined)?.replayName;
+    const replayName = (args as { replayName?: string } | undefined)
+      ?.replayName;
     if (!replayName) return;
 
     const { currentReplayInfo, newStatInfo, userConnectCode } = getState();

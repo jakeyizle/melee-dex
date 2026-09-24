@@ -34,8 +34,7 @@ const NAMES = ["alpha", "beta", "", "gamma"];
 
 const randomLibrary = (seed: number, size: number): Replay[] => {
   const random = mulberry32(seed);
-  const pick = <T>(items: T[]): T =>
-    items[Math.floor(random() * items.length)];
+  const pick = <T>(items: T[]): T => items[Math.floor(random() * items.length)];
 
   return Array.from({ length: size }, (_unused, index) => {
     const opponent = pick(OPPONENTS);
@@ -78,8 +77,14 @@ const checkStats = (stats: Stats, label: string) => {
     expect(stat.winCount + stat.lossCount, `${label}: wins + losses`).toBe(
       stat.totalCount,
     );
-    expect(stat.winCount, `${label}: wins are not negative`).toBeGreaterThanOrEqual(0);
-    expect(stat.lossCount, `${label}: losses are not negative`).toBeGreaterThanOrEqual(0);
+    expect(
+      stat.winCount,
+      `${label}: wins are not negative`,
+    ).toBeGreaterThanOrEqual(0);
+    expect(
+      stat.lossCount,
+      `${label}: losses are not negative`,
+    ).toBeGreaterThanOrEqual(0);
 
     const expectedRate =
       stat.totalCount === 0
@@ -92,9 +97,16 @@ const checkStats = (stats: Stats, label: string) => {
 
   const total = stats.overallStat.totalCount;
   // Every bucket partitions the same set of games, so each must re-sum to it.
-  expect(sumOf(stats.modeStats), `${label}: modes partition the games`).toBe(total);
-  expect(sumOf(stats.stageStats), `${label}: stages partition the games`).toBe(total);
-  expect(sumOf(stats.matchupStats), `${label}: matchups partition the games`).toBe(total);
+  expect(sumOf(stats.modeStats), `${label}: modes partition the games`).toBe(
+    total,
+  );
+  expect(sumOf(stats.stageStats), `${label}: stages partition the games`).toBe(
+    total,
+  );
+  expect(
+    sumOf(stats.matchupStats),
+    `${label}: matchups partition the games`,
+  ).toBe(total);
   expect(
     sumOf(stats.matchupAndStageStats),
     `${label}: matchup-and-stage partitions the games`,
@@ -115,9 +127,18 @@ const checkStats = (stats: Stats, label: string) => {
   const unique = <T>(rows: T[], key: (row: T) => string) =>
     new Set(rows.map(key)).size === rows.length;
 
-  expect(unique(stats.modeStats, keyOf.mode), `${label}: one row per mode`).toBe(true);
-  expect(unique(stats.stageStats, keyOf.stage), `${label}: one row per stage`).toBe(true);
-  expect(unique(stats.matchupStats, keyOf.matchup), `${label}: one row per matchup`).toBe(true);
+  expect(
+    unique(stats.modeStats, keyOf.mode),
+    `${label}: one row per mode`,
+  ).toBe(true);
+  expect(
+    unique(stats.stageStats, keyOf.stage),
+    `${label}: one row per stage`,
+  ).toBe(true);
+  expect(
+    unique(stats.matchupStats, keyOf.matchup),
+    `${label}: one row per matchup`,
+  ).toBe(true);
   expect(
     unique(stats.matchupAndStageStats, keyOf.matchupAndStage),
     `${label}: one row per matchup and stage`,
@@ -130,9 +151,10 @@ const checkFullStats = (fullStats: FullStats, label: string) => {
   // The index and the array are two views of one set of objects. Nothing may
   // add to one without the other — a miss here means duplicate opponent rows
   // and a record silently split in two.
-  expect(fullStats.opponentIndex.size, `${label}: index covers every opponent`).toBe(
-    fullStats.opponentSpecificStats.length,
-  );
+  expect(
+    fullStats.opponentIndex.size,
+    `${label}: index covers every opponent`,
+  ).toBe(fullStats.opponentSpecificStats.length);
   for (const opponentStats of fullStats.opponentSpecificStats) {
     expect(
       fullStats.opponentIndex.get(opponentStats.opponentConnectCode),
@@ -140,9 +162,10 @@ const checkFullStats = (fullStats: FullStats, label: string) => {
     ).toBe(opponentStats);
   }
   for (const [connectCode, opponentStats] of fullStats.opponentIndex) {
-    expect(opponentStats.opponentConnectCode, `${label}: index is keyed correctly`).toBe(
-      connectCode,
-    );
+    expect(
+      opponentStats.opponentConnectCode,
+      `${label}: index is keyed correctly`,
+    ).toBe(connectCode);
   }
 
   let opponentTotal = 0;
@@ -185,28 +208,34 @@ describe("stat invariants over generated libraries", () => {
     expect(stats.stats.overallStat.totalCount).toBeGreaterThan(0);
   });
 
-  it.each(SEEDS)("hold after folding one replay at a time (seed %i)", (seed) => {
-    const library = randomLibrary(seed, 120);
-    const stats = createEmptyFullStats();
+  it.each(SEEDS)(
+    "hold after folding one replay at a time (seed %i)",
+    (seed) => {
+      const library = randomLibrary(seed, 120);
+      const stats = createEmptyFullStats();
 
-    for (const replay of library) {
-      applyReplayToStats(stats, replay, USER);
-    }
+      for (const replay of library) {
+        applyReplayToStats(stats, replay, USER);
+      }
 
-    checkFullStats(stats, `seed ${seed} incremental`);
-  });
+      checkFullStats(stats, `seed ${seed} incremental`);
+    },
+  );
 
   // The live path folds into stats that already exist, which is the case the
   // batch path never exercises.
-  it.each(SEEDS)("hold when a live game lands on existing stats (seed %i)", (seed) => {
-    const library = randomLibrary(seed, 120);
-    const stats = buildStats(library.slice(0, 100), USER);
+  it.each(SEEDS)(
+    "hold when a live game lands on existing stats (seed %i)",
+    (seed) => {
+      const library = randomLibrary(seed, 120);
+      const stats = buildStats(library.slice(0, 100), USER);
 
-    for (const replay of library.slice(100)) {
-      applyReplayToStats(stats, replay, USER);
-      checkFullStats(stats, `seed ${seed} live`);
-    }
-  });
+      for (const replay of library.slice(100)) {
+        applyReplayToStats(stats, replay, USER);
+        checkFullStats(stats, `seed ${seed} live`);
+      }
+    },
+  );
 
   it("hold for an empty library", () => {
     checkFullStats(createEmptyFullStats(), "empty");

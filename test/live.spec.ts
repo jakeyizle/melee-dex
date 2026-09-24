@@ -125,10 +125,14 @@ suite("a game starting while the app is running", () => {
     );
 
     await expect
-      .poll(() => page.getByText("JAKE#193", { exact: true }).first().isVisible())
+      .poll(() =>
+        page.getByText("JAKE#193", { exact: true }).first().isVisible(),
+      )
       .toBe(true);
     await expect
-      .poll(() => page.getByText("KENJ#707", { exact: true }).first().isVisible())
+      .poll(() =>
+        page.getByText("KENJ#707", { exact: true }).first().isVisible(),
+      )
       .toBe(true);
   }, 60_000);
 

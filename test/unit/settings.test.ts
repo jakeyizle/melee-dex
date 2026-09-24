@@ -23,7 +23,10 @@ describe("reading settings", () => {
   });
 
   it("reads both settings at once", async () => {
-    const settings = setup({ replayDirectory: "C:/Slippi", username: "USER#001" });
+    const settings = setup({
+      replayDirectory: "C:/Slippi",
+      username: "USER#001",
+    });
 
     expect(await settings.selectAllSettings()).toEqual({
       replayDirectory: "C:/Slippi",

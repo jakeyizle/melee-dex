@@ -58,7 +58,7 @@ than skipping, so the breakdown still adds up to `selectBadReplayCount`.
 
 Settings keys are `replayDirectory`, `username` and `schemaVersion`. `schemaVersion` drives the
 one-time **backfill**: when `needsReplayBackfill()` says the stored replays predate
-`REPLAY_SCHEMA_VERSION`, `loadReplayDirectory` passes an *empty* `existingReplayNames`, so every
+`REPLAY_SCHEMA_VERSION`, `loadReplayDirectory` passes an _empty_ `existingReplayNames`, so every
 file on disk is re-parsed and overwrites its row. It is stamped only when a load actually started
 — a directory that has been moved must leave the backfill outstanding, not consume it — and rows
 whose files are gone keep their old shape, which is why every field added to `Replay` stays
@@ -130,10 +130,10 @@ Derived, pure:
 
 Measured, not assumed. Per replay, building the stats costs:
 
-| | 500 opponents | 3,000 | 10,000 |
-| --- | --- | --- | --- |
-| IndexedDB scan (`executeCallbackOnEachReplay`) | ~16.6us | ~16.6us | ~16.6us |
-| Fold (`applyReplayToStats`) | 3.2us | 3.1us | 3.5us |
+|                                                | 500 opponents | 3,000   | 10,000  |
+| ---------------------------------------------- | ------------- | ------- | ------- |
+| IndexedDB scan (`executeCallbackOnEachReplay`) | ~16.6us       | ~16.6us | ~16.6us |
+| Fold (`applyReplayToStats`)                    | 3.2us         | 3.1us   | 3.5us   |
 
 The fold is flat in the number of opponents **because of `opponentIndex`**. Before it, the same
 numbers were 5.0us / 14us / 43.8us — finding the opponent row was a linear scan of an array that
@@ -156,7 +156,7 @@ rather than as a wrong number.
 the ranked and unranked `modeStats` rows combined, so the breakdown is always derivable and never
 needs a second pass; read one side with `getModeStat(stats, mode)`, which zeroes rather than
 returning undefined. `FullStats` = a global `Stats`
-plus `opponentSpecificStats: OpponentStats[]` and `opponentIndex`, a `Map` over the *same*
+plus `opponentSpecificStats: OpponentStats[]` and `opponentIndex`, a `Map` over the _same_
 objects. Push and index together, never one without the other. Shared types are in
 `src/types.d.ts`.
 
@@ -180,7 +180,7 @@ and filing it as a bad replay is the intended outcome.
 3. **`getStats()`** — walks every frame: 160ms on the smallest replay in `testdata/`, 1200ms and
    ~50MB on the largest, which is the cost the worker cap in `electron/CLAUDE.md` exists to contain.
 
-Tier 2 exists because tier 3 is so expensive and there is no cheaper way to *compute* the answer —
+Tier 2 exists because tier 3 is so expensive and there is no cheaper way to _compute_ the answer —
 `getLatestFrame()` costs the same as `getStats()`, since the expense is the frame walk and not the
 stat computers, and the primitives `getWinners()` uses internally are not exported. Over
 `testdata/`, adding tier 2 took the parse from 2084ms to 6ms with identical results.
@@ -193,10 +193,10 @@ Tier 2 is a shortcut, never an override: it is consulted only after `getWinners(
 and any failure to read returns `null` and falls through. `tryGetWinner with the final-stock reader`
 in `test/unit/replayParsing.test.ts` pins that the two tiers agree on every replay in `testdata/`.
 
-`tryGetWinner` inverts the player index on purpose — more stocks *lost* means the *other* player
+`tryGetWinner` inverts the player index on purpose — more stocks _lost_ means the _other_ player
 won. It reads like an off-by-one; it is not.
 
-### The upstream bugs — TODO, to be filed by a human
+### The upstream bugs — TODO
 
 **Tier 2 should not need to exist.** slippi-js already reads the final post-frame updates inside
 `getWinners()`, in under a millisecond, and then declines to use them. Two separate causes, both in
@@ -204,7 +204,7 @@ won. It reads like an off-by-one; it is not.
 
 1. **`getWinners.esm.js` — the placements branch gives up too early.** A pre-3.13 replay has a
    4-entry `placements` array whose every `position` is `null`, so `placements.find(p => p.position
-   === 0)` misses and the function does `return []` — discarding final stocks it has already read
+=== 0)` misses and the function does `return []` — discarding final stocks it has already read
    and that plainly name a winner. Falling through to the existing last-frame path instead of
    returning is a one-line change, and it resolves `Game_20200727T230003.slp` and
    `Game_20200729T230153.slp` correctly while changing nothing it already answered.
@@ -215,18 +215,13 @@ won. It reads like an off-by-one; it is not.
    reads as a double KO, because `[].every(...)` is `true`. Repro: `Game_20250421T224653.slp`.
    `tailReader.ts` works around this by trying the shorter trailer layouts.
 
-**Do not open this PR from an assistant** — slippi-js has policies about AI-authored contributions.
-This is a note for a human to pick up. Once both land upstream, tier 2 can be deleted: drop
-`electron/worker/tailReader.ts`, the optional parameters on `tryGetWinner` / `parseGameToReplay`,
-and the thunk at the one call site in `electron/worker/replayParser.ts`.
-
 ## Identifying the user
 
 Three rules, in order. Nothing else may write `username`.
 
 1. **The configured connect code.** Entered in Settings, and trusted without confirmation.
 2. **A game in progress.** It contains exactly two players and one of them is the user, so
-   `identifyUserFromLiveGame` settles it — *and persists it* — whenever the library tells the two
+   `identifyUserFromLiveGame` settles it — _and persists it_ — whenever the library tells the two
    apart. When they appear equally often it returns `isConfident: false`: `getMostCommonUser`
    then falls through to the first candidate, candidates arrive in the live game's port order,
    and the answer is a coin flip. The code is still used for the session; it is not stored.

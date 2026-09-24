@@ -6,20 +6,28 @@ opponent. Windows-targeted — only an NSIS x64 installer is built.
 
 ## Commands
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Starts Vite and auto-launches Electron. |
-| `npm run build` | `tsc` typecheck → `vite build` → `electron-builder` into `release/<version>/`. |
-| `npm test` | The unit suite (`test/unit/`). Fast — no build step. |
-| `npm run test:watch` | Same suite in watch mode. |
-| `npm run test:e2e` | The Playwright-Electron specs. `pretest:e2e` builds the app first. |
+| Command                | What it does                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `npm run dev`          | Starts Vite and auto-launches Electron.                                        |
+| `npm run build`        | `tsc` typecheck → `vite build` → `electron-builder` into `release/<version>/`. |
+| `npm test`             | The unit suite (`test/unit/`). Fast — no build step.                           |
+| `npm run test:watch`   | Same suite in watch mode.                                                      |
+| `npm run test:e2e`     | The Playwright-Electron specs. `pretest:e2e` builds the app first.             |
+| `npm run format`       | Prettier over the repo.                                                        |
+| `npm run format:check` | Prettier in check mode — fails rather than rewriting.                          |
 
 `npx tsc --noEmit` typechecks without packaging.
 
-**There is no lint or format script.** `eslint`, `prettier`, `tailwindcss`, `postcss` and
-`autoprefixer` are installed but have no config files and are used nowhere — do not reach for
-Tailwind or add tooling configs unless asked. Formatting comes from VS Code format-on-save:
-Prettier defaults, double quotes, semicolons, 2-space indent, trailing commas.
+**There is no lint script.** `eslint` is installed but has no config, so `npx eslint` only errors;
+`tailwindcss`, `postcss` and `autoprefixer` are installed and used nowhere. Do not reach for
+Tailwind or add tooling configs unless asked.
+
+**Formatting is Prettier, and `npm run format:check` is the gate.** Style is Prettier's defaults —
+double quotes, semicolons, 2-space indent, trailing commas — which is also what VS Code
+format-on-save applies. `.prettierrc` sets only `endOfLine: "auto"`, because `core.autocrlf` is on
+and a checkout produces CRLF, which Prettier's `lf` default would otherwise flag on every file in
+the repo. `.prettierignore` covers the generated output, `coverage/` included, since that one is
+committed.
 
 ## Tests
 
@@ -32,7 +40,7 @@ Prettier defaults, double quotes, semicolons, 2-space indent, trailing commas.
   The config runs in **Node by default**; a `.test.tsx` file opts into a DOM with
   `// @vitest-environment jsdom` on its first line. Component tests render through
   `renderComponent` (which supplies the router — every page either navigates or renders a `Link`)
-  and drive state with `useReplayStore.setState`, including replacing store *actions* with spies,
+  and drive state with `useReplayStore.setState`, including replacing store _actions_ with spies,
   since zustand keeps them in state. They assert on what a user can see, never on internals, and
   call `afterEach(cleanup)` explicitly because the suite does not use vitest globals.
 
@@ -45,10 +53,11 @@ Prettier defaults, double quotes, semicolons, 2-space indent, trailing commas.
   whether a guard holds, what a control commits. The presentational leaves (`PaperDisplay`,
   `HeadToHeadScore`, `PlayerAvatar`, `GamesPlayedPaperDisplay`) are props-to-JSX and are
   deliberately left alone — testing them moves the coverage number and catches nothing.
+
 - `test/*.spec.ts` — Playwright-Electron specs against the built app, run by `vitest.config.ts`.
 
   **What belongs here and what does not.** These are slow and each one launches Electron, so a
-  spec earns its place only by covering something the jsdom and Node suites *cannot reach*: the
+  spec earns its place only by covering something the jsdom and Node suites _cannot reach_: the
   preload bridge and real IPC, real IndexedDB through localforage, real `utilityProcess` forking
   and structured-clone across the process boundary, `fs.watch`, and `HashRouter` over `file://`.
   Rendering logic, guards and state machines belong in `test/unit`, where they cost milliseconds.
@@ -58,7 +67,7 @@ Prettier defaults, double quotes, semicolons, 2-space indent, trailing commas.
   - `live.spec.ts` — a `.slp` copied into the watched directory while the app runs: the only
     cover for `fs.watch` → parse → `live-replay-loaded` → the head-to-head card, and for the app
     identifying the user from a game without being asked.
-  - `workerPool.spec.ts` — 30 replays, so the pool forks *several* processes. Every other spec
+  - `workerPool.spec.ts` — 30 replays, so the pool forks _several_ processes. Every other spec
     imports seven files, which is one worker, so this is the only place parallel dispatch and
     structured-clone-at-volume actually run. The assertion is that every file is stored exactly
     once: a batch handed out twice or dropped lands as a count that is not 30.
@@ -130,7 +139,7 @@ one. Worker count is capped by memory, not cores — see `electron/CLAUDE.md`.
   no `mode` at all — absent means unranked.
 - **Live replay** — the in-progress `.slp` the watcher sees before the game has a winner.
 - **Rank** — a player's ranked standing (Bronze 1 … Grandmaster, from a `ratingOrdinal`). It is
-  **not in the `.slp` file at all** and is fetched per connect code from slippi.gg; only *current*
+  **not in the `.slp` file at all** and is fetched per connect code from slippi.gg; only _current_
   rank exists, so it can never be attached to a stored replay. See "Rank lookups" in
   `electron/CLAUDE.md` before touching it — the request policy there is deliberate.
 
