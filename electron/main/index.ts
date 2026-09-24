@@ -1,10 +1,6 @@
 import { app, BrowserWindow } from "electron";
-import os from "node:os";
 import { createMainWindow, destroyMainWindow, mainWindow } from "./utils";
 import "./ipc";
-
-// Disable GPU Acceleration for Windows 7
-if (os.release().startsWith("6.1")) app.disableHardwareAcceleration();
 
 // Must match `appId` in electron-builder.json. The installer registers the
 // shortcut under that id, and Windows groups taskbar windows and routes

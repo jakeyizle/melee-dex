@@ -131,10 +131,9 @@ one. Worker count is capped by memory, not cores — see `electron/CLAUDE.md`.
 - The app makes exactly two kinds of outbound request: the updater, and the rank lookup in
   `electron/main/rankService.ts`. Both are against servers that may be unreachable, and neither may
   ever be fatal.
-- `electron-builder.json` still carries the `electron-vite-react` template's placeholder
-  `appId: "YourAppID"`, as do the template comments (`// #298`). The template's other leftovers
-  (`.vite.config.flat.txt`, `.playwright.config.txt`, the unused `ws` dependency) have been
-  removed.
+- The `electron-vite-react` template's comments (`// #298`) are still scattered around. Its other
+  leftovers (`.vite.config.flat.txt`, `.playwright.config.txt`, the unused `ws` dependency, the
+  placeholder `appId: "YourAppID"` — now `com.meleedex.app`) have been removed.
 - `testdata/` holds 8 files. Seven are `*.slp`, of which six are valid and
   `Game_20250422T214211.slp` is 24 frames long and rejected as too short.
   `Game_20220901T221616.slp.old` parses fine but the file walk only matches `*.slp`, so the app

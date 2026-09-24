@@ -147,9 +147,12 @@ card. Nothing is faked there but the folder picker.
   `import type` on its `db/replays` and `slippi-js` imports.
 - **A parser worker's ~200MB is mostly V8 free-list, and you cannot cap it.** Only ~25MB is live
   data; the rest is garbage V8 never collects, because a bare Node `utilityProcess` gets a 4096MB
-  heap limit and no memory-pressure signal. Measured as inert in Electron 33: `execArgv`,
-  `NODE_OPTIONS` and `app.commandLine.appendSwitch("js-flags", ...)` all leave `heap_size_limit`
-  at 4096, and a forced GC frees the heap (69MB → 25MB) without returning pages to the OS
+  heap limit and no memory-pressure signal. Measured as inert in Electron 33 and re-measured on
+  Electron 44 (Node 24, V8 15.2) with the same answer: `execArgv`, `NODE_OPTIONS` and
+  `app.commandLine.appendSwitch("js-flags", ...)` all leave `heap_size_limit` at ~4096. On 44 an
+  `execArgv` handed to `utilityProcess.fork` *does* now reach the child's `process.execArgv` — but
+  V8 still ignores it, so watching the flag arrive is not the same as it taking effect. A forced
+  GC frees the heap (69MB → 25MB) without returning pages to the OS
   (RSS 159 → 158). It plateaus rather than leaking, so **worker count is the only lever** — and
   it is linear.
 - The watcher uses `path.join` / `path.basename` on what `fs.watch` hands back, which on Windows
