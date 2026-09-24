@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { SlippiGame } from "@slippi/slippi-js/node";
+import { readFinalStocks } from "../../electron/worker/tailReader";
 import {
   parseGameToReplay,
   tryGetWinner,
@@ -166,6 +167,79 @@ describe("tryGetWinner", () => {
     } as unknown as SlippiGame;
 
     expect(tryGetWinner(tiedGame)).toEqual([]);
+  });
+});
+
+/**
+ * The parser worker hands `tryGetWinner` a reader that pulls the last frame's
+ * stocks out of the end of the file, so it can skip `getStats()` — up to 1200ms
+ * and ~50MB on a long replay. These pin the only thing that makes that safe:
+ * the shortcut has to reach the same answer, and it has to stay a shortcut.
+ */
+describe("tryGetWinner with the final-stock reader", () => {
+  it("reaches the same verdict as the full parse for every replay", () => {
+    const files = fs
+      .readdirSync(TESTDATA)
+      .filter((name) => name.endsWith(".slp"));
+
+    for (const name of files) {
+      const filePath = path.join(TESTDATA, name);
+      const slow = tryGetWinner(new SlippiGame(filePath));
+      const fast = tryGetWinner(new SlippiGame(filePath), () =>
+        readFinalStocks(filePath),
+      );
+
+      expect(fast, name).toEqual(slow);
+    }
+  });
+
+  it("does not read the file when the replay declares a winner", () => {
+    const game = new SlippiGame(
+      path.join(TESTDATA, "Game_20250505T223105.slp"),
+    );
+    const read = vi.fn(() => null);
+
+    expect(tryGetWinner(game, read)).toEqual(game.getWinners());
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  // The whole point: on a replay slippi-js cannot resolve, the winner comes back
+  // without the frame walk that getStats() would do.
+  it("names a winner without falling back to getStats", () => {
+    const getStats = vi.fn();
+    const game = { getWinners: () => [], getStats } as unknown as SlippiGame;
+
+    const winners = tryGetWinner(game, () => [
+      { playerIndex: 0, isFollower: false, stocksRemaining: 2, percent: 40 },
+      { playerIndex: 1, isFollower: false, stocksRemaining: 0, percent: 120 },
+    ]);
+
+    expect(winners).toEqual([{ playerIndex: 0, position: 0 }]);
+    expect(getStats).not.toHaveBeenCalled();
+  });
+
+  // Equal stocks is deliberately not resolved here, even though percent would
+  // separate them: the app has always rejected these, and the reader must not
+  // quietly start accepting them.
+  it("falls through to getStats when the last frame is tied on stocks", () => {
+    const getStats = vi.fn(() => ({ stocks: [] }));
+    const game = { getWinners: () => [], getStats } as unknown as SlippiGame;
+
+    const winners = tryGetWinner(game, () => [
+      { playerIndex: 0, isFollower: false, stocksRemaining: 1, percent: 40 },
+      { playerIndex: 1, isFollower: false, stocksRemaining: 1, percent: 120 },
+    ]);
+
+    expect(winners).toEqual([]);
+    expect(getStats).toHaveBeenCalled();
+  });
+
+  it("falls through to getStats when the file cannot be read", () => {
+    const getStats = vi.fn(() => ({ stocks: [] }));
+    const game = { getWinners: () => [], getStats } as unknown as SlippiGame;
+
+    expect(tryGetWinner(game, () => null)).toEqual([]);
+    expect(getStats).toHaveBeenCalled();
   });
 });
 

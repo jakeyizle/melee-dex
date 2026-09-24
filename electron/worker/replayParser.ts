@@ -6,6 +6,7 @@ import {
 } from "../../src/replayParsing";
 import type { Replay } from "../../src/db/replays";
 import type { ParseRequest, ParseResults } from "./protocol";
+import { readFinalStocks } from "./tailReader";
 
 // slippi-js is CJS and externalized from the bundle, same as in the main process.
 const require = createRequire(import.meta.url);
@@ -21,7 +22,11 @@ const parseBatch = (files: ReplayFileInfo[]): ParseResults => {
 
   for (const file of files) {
     try {
-      const result = parseGameToReplay(new SlippiGame(file.path), file);
+      // The tail reader is only consulted when slippi-js cannot name a winner,
+      // so this thunk usually goes uncalled — see `tryGetWinner`.
+      const result = parseGameToReplay(new SlippiGame(file.path), file, () =>
+        readFinalStocks(file.path),
+      );
       if (result.ok) {
         replays.push(result.replay);
       } else {

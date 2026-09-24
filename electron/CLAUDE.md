@@ -24,6 +24,18 @@ objects to main, which forwards them to the main renderer, the single writer to 
 renderer acks each batch on `replays-inserted`, and that ack is both the progress signal and the
 backpressure that releases the worker's next batch.
 
+The worker passes `readFinalStocks` from `electron/worker/tailReader.ts` into `parseGameToReplay`,
+which is the only call site. It is a shortcut past `getStats()` for replays slippi-js cannot resolve
+a winner for — see "The three tiers" in `src/CLAUDE.md`. It lives here rather than in `src/` because
+it reads the file with `node:fs`, and `src/replayParsing.ts` is imported by the renderer too.
+
+**That module is the one place in the codebase that knows the `.slp` byte layout** — where the raw
+event block starts, how the payload-sizes header works, and four field offsets inside a
+`POST_FRAME_UPDATE`. That knowledge is normally slippi-js's job, so the module is written to give up
+rather than guess: every failure is `null`, which falls through to the full parse. Answering wrongly
+would silently record the loser as the winner, which is why `test/unit/tailReader.test.ts` spends
+most of its length on truncated and malformed files.
+
 `getNumberOfWorkers` is `min(cores - 1, 6, ceil(files / 10))`. The cap is 6 because each worker's
 peak footprint is the parsed frame data (~200MB for a 1.4MB replay, ~300MB for a 9MB one), not the
 process baseline — throughput knees long before memory does (measured on 20 cores over 150
@@ -31,7 +43,8 @@ replays: 4 workers 7.8s, 6 workers 6.1s, 8 workers 4.9s, 15 workers 4.2s). Batch
 `PARSE_BATCH_SIZE = 10` from `electron/worker/protocol.ts`.
 
 All workers are retired when the queue drains, so an idle app runs no parser process. A live game
-forks a fresh one (~575ms, irrelevant on a path that runs once per finished game).
+forks a fresh one (~294ms measured on Electron 44 / slippi-js 9, down from ~575ms on Electron 33 /
+slippi-js 6 — irrelevant either way on a path that runs once per finished game).
 
 If a worker dies mid-batch its files are requeued and re-parsed **one at a time**; a file that
 kills a worker while isolated is filed as a bad replay, which is what stops the retry loop. The

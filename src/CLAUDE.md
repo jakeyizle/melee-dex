@@ -169,8 +169,56 @@ predates placements. A normally finished game always has unequal stocks lost, so
 resolves it. Equal stocks lost therefore means the game really was a draw or was never finished,
 and filing it as a bad replay is the intended outcome.
 
+### The three tiers, in cost order
+
+`tryGetWinner` tries them in this order, and the order is the whole design:
+
+1. **`game.getWinners()`** — reads the game-end block and the final post-frame updates only. Under
+   5ms on a 9MB replay.
+2. **The final-stock reader** (`electron/worker/tailReader.ts`), passed in as a thunk by the parser
+   worker. About 0.3ms. Answers for most of what `getWinners()` gives up on.
+3. **`getStats()`** — walks every frame: 160ms on the smallest replay in `testdata/`, 1200ms and
+   ~50MB on the largest, which is the cost the worker cap in `electron/CLAUDE.md` exists to contain.
+
+Tier 2 exists because tier 3 is so expensive and there is no cheaper way to *compute* the answer —
+`getLatestFrame()` costs the same as `getStats()`, since the expense is the frame walk and not the
+stat computers, and the primitives `getWinners()` uses internally are not exported. Over
+`testdata/`, adding tier 2 took the parse from 2084ms to 6ms with identical results.
+
+Tier 2 decides **only** on an outright difference in stocks remaining. A tie falls through to tier 3,
+which also declines it, and the replay is rejected. Breaking the tie on percent — which slippi-js
+does — would quietly start accepting games this app has always thrown away, so do not add it.
+
+Tier 2 is a shortcut, never an override: it is consulted only after `getWinners()` comes back empty,
+and any failure to read returns `null` and falls through. `tryGetWinner with the final-stock reader`
+in `test/unit/replayParsing.test.ts` pins that the two tiers agree on every replay in `testdata/`.
+
 `tryGetWinner` inverts the player index on purpose — more stocks *lost* means the *other* player
 won. It reads like an off-by-one; it is not.
+
+### The upstream bugs — TODO, to be filed by a human
+
+**Tier 2 should not need to exist.** slippi-js already reads the final post-frame updates inside
+`getWinners()`, in under a millisecond, and then declines to use them. Two separate causes, both in
+`dist/common/utils/`, both verified against `testdata/` on 9.1.3:
+
+1. **`getWinners.esm.js` — the placements branch gives up too early.** A pre-3.13 replay has a
+   4-entry `placements` array whose every `position` is `null`, so `placements.find(p => p.position
+   === 0)` misses and the function does `return []` — discarding final stocks it has already read
+   and that plainly name a winner. Falling through to the existing last-frame path instead of
+   returning is a one-line change, and it resolves `Game_20200727T230003.slp` and
+   `Game_20200729T230153.slp` correctly while changing nothing it already answered.
+2. **`slpReader.esm.js` — `extractFinalPostFrameUpdates` assumes a complete tail.** The offset is
+   `rawDataPosition + rawDataLength - gameEndSize - frameBookendSize - postFrameSize`, taking those
+   sizes from the payload-sizes header whether or not those events were ever written. A game that
+   ended without a `GAME_END` lands mid-message and returns nothing — and the empty result then
+   reads as a double KO, because `[].every(...)` is `true`. Repro: `Game_20250421T224653.slp`.
+   `tailReader.ts` works around this by trying the shorter trailer layouts.
+
+**Do not open this PR from an assistant** — slippi-js has policies about AI-authored contributions.
+This is a note for a human to pick up. Once both land upstream, tier 2 can be deleted: drop
+`electron/worker/tailReader.ts`, the optional parameters on `tryGetWinner` / `parseGameToReplay`,
+and the thunk at the one call site in `electron/worker/replayParser.ts`.
 
 ## Identifying the user
 

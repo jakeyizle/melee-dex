@@ -112,16 +112,21 @@ one. Worker count is capped by memory, not cores — see `electron/CLAUDE.md`.
   A replay with no connect code is rejected.
 - **Stock** — a life. A stock with an `endFrame` is one that was lost.
 - **Character id / stage id** — numeric in the `.slp` file but **stored and compared as strings**
-  everywhere in this codebase (`.toString()` at parse time). Name tables live in
-  `src/utils/meleeIdUtils.ts`, along with `LEGAL_STAGE_IDS` (tournament-legal stages) — the one
-  place ids are plain numbers, so compare against it carefully.
+  everywhere in this codebase (`.toString()` at parse time). `src/utils/meleeIdUtils.ts` turns
+  them into names, using slippi-js's own tables rather than keeping a copy. An id off the
+  **playable** roster reads as "Unknown" on purpose: slippi-js knows Master Hand and the
+  wireframes, and naming one would be a worse answer than admitting the replay is not what it
+  claims. `LEGAL_STAGE_IDS` (tournament-legal stages) stays hand-written there — a ruleset, not
+  Melee data — and is the one place ids are plain numbers, so compare against it carefully.
 - **Matchup** — your character vs the opponent's character. Stats are kept overall, per stage,
   per matchup, and per matchup-and-stage.
 - **Head-to-head** — stats narrowed to a single opponent connect code.
-- **Ranked / unranked** — `Replay.mode`, derived from `settings.matchInfo.matchId`. Only
-  `mode.ranked*` is ranked; direct, unranked and every pre-slp-3.14 replay with no matchId are
+- **Ranked / unranked** — `Replay.mode`, derived from `settings.matchInfo.sessionId` (slippi-js
+  7.2 renamed `matchId` to that; the values are identical and the parser reads the old name as a
+  fallback, but `Replay.matchId` keeps its name on disk so no row has to be migrated). Only
+  `mode.ranked*` is ranked; direct, unranked and every pre-slp-3.14 replay with no id are
   unranked. Ranked games are the only ones that form **sets** (`gameNumber` > 1); unranked games
-  each get their own matchId and are always game 1. A replay stored before this field existed has
+  each get their own id and are always game 1. A replay stored before this field existed has
   no `mode` at all — absent means unranked.
 - **Live replay** — the in-progress `.slp` the watcher sees before the game has a winner.
 - **Rank** — a player's ranked standing (Bronze 1 … Grandmaster, from a `ratingOrdinal`). It is
