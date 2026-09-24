@@ -42,6 +42,9 @@ export default defineConfig(({ command }) => {
               minify: isBuild,
               outDir: 'dist-electron/main',
               rollupOptions: {
+                // Exact ids only, so subpaths are not covered. `@slippi/slippi-js/node`
+                // gets away with it because both call sites go through `createRequire`,
+                // which Rollup never sees — a real `import` of it would need adding here.
                 external: Object.keys('dependencies' in pkg ? pkg.dependencies : {}),
               },
             },

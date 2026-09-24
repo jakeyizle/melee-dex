@@ -9,7 +9,7 @@ import type { ParseRequest, ParseResults } from "./protocol";
 
 // slippi-js is CJS and externalized from the bundle, same as in the main process.
 const require = createRequire(import.meta.url);
-const { SlippiGame } = require("@slippi/slippi-js");
+const { SlippiGame } = require("@slippi/slippi-js/node");
 
 // This runs in a utilityProcess: a plain Node context with no Chromium and no
 // IndexedDB. It only parses — the parsed `Replay` objects go back to main, which

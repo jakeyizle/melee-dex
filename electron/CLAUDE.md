@@ -140,6 +140,12 @@ card. Nothing is faked there but the folder picker.
   output breaks the app silently.
 - `slippi-js` is CJS and externalized from the main bundle, so it is pulled in with `require()`,
   not an ESM import, and resolved from `node_modules` at runtime. The worker does the same.
+- It is required as **`@slippi/slippi-js/node`**, never the bare package name. Since v8 the default
+  entry is the *browser* build, whose `SlippiGame` takes a `BinaryLike` rather than a file path, so
+  the bare id would typecheck and then fail on every replay. The subpath is why `tsconfig.json`
+  needs `"moduleResolution": "Bundler"` — node10 resolution does not read the `exports` field.
+  `test/unit/replayParser.test.ts` fakes `createRequire` and matches the id literally, so it has to
+  move in step.
 - The worker is built as a second entry of the **main** build (`vite.config.ts` → `main.entry`),
   landing at `dist-electron/main/replayParser.js`, which is what `WORKER_ENTRY` points at. It is
   forked from inside `app.asar` in the packaged app, which works — but it means

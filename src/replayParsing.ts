@@ -1,4 +1,4 @@
-import type { SlippiGame } from "@slippi/slippi-js";
+import type { SlippiGame } from "@slippi/slippi-js/node";
 import type { ReplayPlayer, Replay, ReplayMode } from "./db/replays";
 
 export type ReplayFileInfo = { name: string; path: string };

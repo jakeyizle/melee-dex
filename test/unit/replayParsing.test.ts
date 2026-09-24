@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { SlippiGame } from "@slippi/slippi-js";
+import { SlippiGame } from "@slippi/slippi-js/node";
 import {
   parseGameToReplay,
   tryGetWinner,

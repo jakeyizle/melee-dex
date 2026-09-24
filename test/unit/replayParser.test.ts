@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { SlippiGame } from "@slippi/slippi-js";
+import { SlippiGame } from "@slippi/slippi-js/node";
 import type { ParseResults } from "../../electron/worker/protocol";
 import type { ReplayFileInfo } from "@/replayParsing";
 
@@ -29,7 +29,7 @@ vi.mock("node:module", async (importOriginal) => {
     ...actual,
     // The worker asks for exactly one module, and it gets the real one.
     createRequire: () => (id: string) => {
-      if (id === "@slippi/slippi-js") return { SlippiGame };
+      if (id === "@slippi/slippi-js/node") return { SlippiGame };
       throw new Error(`unexpected require: ${id}`);
     },
   };

@@ -6,7 +6,7 @@ import { PARSE_BATCH_SIZE } from "../worker/protocol";
 import type { ParseResults } from "../worker/protocol";
 import type { ReplayFileInfo, RejectedReplay } from "../../src/replayParsing";
 import { require } from "./vite_constants";
-const { SlippiGame } = require("@slippi/slippi-js");
+const { SlippiGame } = require("@slippi/slippi-js/node");
 
 export class ReplayLoadManager {
   private static instance: ReplayLoadManager | null = null;
