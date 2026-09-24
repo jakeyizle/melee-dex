@@ -28,7 +28,13 @@ export const ReplayLoadInProgressCard = () => {
           >
             {isBackfilling ? "Updating Your Replays" : "Loading Replay Files"}
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              mb: 3,
+            }}
+          >
             {isBackfilling
               ? "This version reads more out of each replay than the one that imported yours, so they are being read again. It only happens once."
               : "Please wait while your replay files are being processed. This may take a little while depending on how many files you have."}

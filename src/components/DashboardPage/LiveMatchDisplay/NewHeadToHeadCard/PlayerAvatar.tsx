@@ -27,7 +27,13 @@ export const PlayerAvatar = ({
         alignItems: isFlipped ? "flex-end" : "flex-start",
       }}
     >
-      <Typography variant="subtitle1" fontWeight="bold" color={avatarBgColor}>
+      <Typography
+        variant="subtitle1"
+        color={avatarBgColor}
+        sx={{
+          fontWeight: "bold",
+        }}
+      >
         {connectCode}
       </Typography>
       <RankBadge rank={rank} />
@@ -36,7 +42,12 @@ export const PlayerAvatar = ({
 
   if (isFlipped) {
     return (
-      <Box display="flex" alignItems="center">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
         <Box sx={{ mr: 1 }}>{label}</Box>
         <Avatar
           src={getCharacterIcon(characterId)}
@@ -47,7 +58,12 @@ export const PlayerAvatar = ({
   }
 
   return (
-    <Box display="flex" alignItems="center">
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
       <Avatar
         src={getCharacterIcon(characterId)}
         sx={{ bgcolor: avatarBgColor }}

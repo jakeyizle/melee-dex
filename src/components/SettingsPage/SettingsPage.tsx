@@ -170,24 +170,31 @@ export const SettingsPage = () => {
                     fullWidth
                     placeholder="Select replay directory..."
                     value={replayDirectory}
-                    InputProps={{
-                      readOnly: true,
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<FolderOpenIcon />}
-                            onClick={handleDirectorySelect}
-                          >
-                            Browse
-                          </Button>
-                        </InputAdornment>
-                      ),
+                    slotProps={{
+                      input: {
+                        readOnly: true,
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<FolderOpenIcon />}
+                              onClick={handleDirectorySelect}
+                            >
+                              Browse
+                            </Button>
+                          </InputAdornment>
+                        ),
+                      },
                     }}
                   />
                 </FormControl>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Where Slippi stores your replays.
                 </Typography>
               </Box>
@@ -207,7 +214,12 @@ export const SettingsPage = () => {
                     helperText={connectCodeErrorText}
                   />
                 </FormControl>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   Your connect code helps identify which player is you in the
                   stats (optional)
                 </Typography>
@@ -240,7 +252,12 @@ export const SettingsPage = () => {
                   <Typography variant="subtitle1" sx={{ fontWeight: "medium" }}>
                     Delete Database
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     This will permanently delete all your replay data and
                     statistics
                   </Typography>

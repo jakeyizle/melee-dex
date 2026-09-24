@@ -53,10 +53,20 @@ export const LoadProgressBar = ({
       />
 
       <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Replays processed: {current} / {total}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {perSecondRate} replays per second
         </Typography>
       </Box>

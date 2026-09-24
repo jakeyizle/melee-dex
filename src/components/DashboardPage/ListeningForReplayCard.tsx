@@ -52,14 +52,22 @@ export const ListeningForReplayCard = () => {
           >
             Listening for Games
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              mb: 1,
+            }}
+          >
             Waiting for a Melee match to start. The dashboard will update
             automatically when a game is detected.
           </Typography>
           <Typography
             variant="body2"
-            color="text.secondary"
-            sx={{ fontWeight: "medium" }}
+            sx={{
+              color: "text.secondary",
+              fontWeight: "medium",
+            }}
           >
             Listening for {formatListeningTime(listeningDuration)}
           </Typography>
@@ -80,7 +88,12 @@ export const ListeningForReplayCard = () => {
             >
               {totalReplayCount}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Total replays loaded
             </Typography>
           </Paper>
@@ -99,7 +112,12 @@ export const ListeningForReplayCard = () => {
             >
               {totalBadReplayCount}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Replays rejected
             </Typography>
           </Paper>

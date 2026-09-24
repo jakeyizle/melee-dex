@@ -19,7 +19,12 @@ export const NoGamesCard = () => (
         >
           No games yet
         </Typography>
-        <Typography variant="body1" color="text.secondary">
+        <Typography
+          variant="body1"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           None of the imported replays have you in them. Play a game, or check
           that the connect code in Settings is the one you play under.
         </Typography>

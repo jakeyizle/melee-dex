@@ -30,7 +30,13 @@ export const NoReplayDirectoryCard = () => {
           >
             Set Up Your Replay Directory
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              mb: 3,
+            }}
+          >
             To get started, you need to set up your replay directory where
             Slippi stores replay files.
           </Typography>

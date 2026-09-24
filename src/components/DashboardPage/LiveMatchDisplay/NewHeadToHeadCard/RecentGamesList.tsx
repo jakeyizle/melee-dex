@@ -1,6 +1,9 @@
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import { Replay } from "@/db/replays";
-import { getCharacterNameFromId, getStageNameFromId } from "@/utils/meleeIdUtils";
+import {
+  getCharacterNameFromId,
+  getStageNameFromId,
+} from "@/utils/meleeIdUtils";
 import { getTimeString, getDurationString } from "@/utils/displayUtils";
 
 interface RecentGamesListProps {
@@ -57,24 +60,41 @@ export const RecentGamesList = ({
               }}
               variant="outlined"
             />
-            <Typography variant="body2" color="text.primary" sx={{ flex: 1 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.primary",
+                flex: 1,
+              }}
+            >
               {getCharacterNameFromId(user?.characterId ?? "")} vs{" "}
               {getCharacterNameFromId(opponent?.characterId ?? "")}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {getStageNameFromId(replay.stageId)}
             </Typography>
             <Typography
               variant="body2"
-              color="text.secondary"
-              sx={{ minWidth: 44, textAlign: "right" }}
+              sx={{
+                color: "text.secondary",
+                minWidth: 44,
+                textAlign: "right",
+              }}
             >
               {getDurationString(replay.lastFrame)}
             </Typography>
             <Typography
               variant="body2"
-              color="text.secondary"
-              sx={{ minWidth: 110, textAlign: "right" }}
+              sx={{
+                color: "text.secondary",
+                minWidth: 110,
+                textAlign: "right",
+              }}
             >
               {getTimeString(replay.date)}
             </Typography>

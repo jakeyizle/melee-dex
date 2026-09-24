@@ -19,12 +19,23 @@ const CharacterUsageAvatar = ({
   color: string;
 }) => {
   return (
-    <Box display="flex" flexDirection="column" alignItems="center">
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
       <Avatar
         sx={{ bgcolor: color }}
         src={getCharacterIcon(character)}
       ></Avatar>
-      <Typography variant="body2" color="text.primary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.primary",
+        }}
+      >
         {percentage}
       </Typography>
     </Box>
@@ -54,7 +65,13 @@ export const CharacterUsagePaper = ({
   });
   return (
     <Paper sx={{ p: 2, bgcolor: "rgba(99, 102, 241, 0.05)" }}>
-      <Typography variant="body2" color="text.secondary" mb={1}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 1,
+        }}
+      >
         <Typography variant="body2" component="span" color={color}>
           {playerConnectCode}
         </Typography>{" "}

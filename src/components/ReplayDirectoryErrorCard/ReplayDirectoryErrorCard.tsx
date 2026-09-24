@@ -41,7 +41,13 @@ export const ReplayDirectoryErrorCard = () => {
           >
             Your Replay Directory Is Missing
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              mb: 3,
+            }}
+          >
             melee-dex could not read the folder it was told to watch, so no new
             games are being imported and none will be detected while you play.
           </Typography>
@@ -61,7 +67,13 @@ export const ReplayDirectoryErrorCard = () => {
             </Typography>
           </Alert>
 
-          <Stack direction="row" spacing={2} justifyContent="center">
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              justifyContent: "center",
+            }}
+          >
             <Button
               variant="contained"
               startIcon={<SettingsIcon />}

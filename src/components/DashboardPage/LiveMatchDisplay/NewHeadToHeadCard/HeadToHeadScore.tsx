@@ -14,12 +14,19 @@ export const HeadToHeadScore = ({
   lossColor,
 }: HeadToHeadScoreProps) => {
   return (
-    <Typography variant="h4" fontWeight="bold">
+    <Typography
+      variant="h4"
+      sx={{
+        fontWeight: "bold",
+      }}
+    >
       <Typography
         color={winColor}
         component="span"
         variant="h4"
-        fontWeight="bold"
+        sx={{
+          fontWeight: "bold",
+        }}
       >
         {winCount}
       </Typography>{" "}
@@ -28,7 +35,9 @@ export const HeadToHeadScore = ({
         color={lossColor}
         component="span"
         variant="h4"
-        fontWeight="bold"
+        sx={{
+          fontWeight: "bold",
+        }}
       >
         {lossCount}
       </Typography>

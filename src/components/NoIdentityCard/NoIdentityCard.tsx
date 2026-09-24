@@ -41,7 +41,13 @@ export const NoIdentityCard = () => {
           >
             Which of these is you?
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              mb: 3,
+            }}
+          >
             Your replays are imported, but melee-dex does not know which player
             in them is you, so it cannot work out your record.
           </Typography>
@@ -60,7 +66,12 @@ export const NoIdentityCard = () => {
                 <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                   {connectCode}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {appearances} {appearances === 1 ? "game" : "games"}
                 </Typography>
               </Button>
@@ -78,10 +89,15 @@ export const NoIdentityCard = () => {
         <Divider sx={{ mb: 3 }} />
 
         <Box sx={{ textAlign: "center" }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            None of these? Your connect code is the{" "}
-            <strong>ABCD#123</strong> shown next to your name in the Slippi
-            Launcher.
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 2,
+            }}
+          >
+            None of these? Your connect code is the <strong>ABCD#123</strong>{" "}
+            shown next to your name in the Slippi Launcher.
           </Typography>
           <Button
             variant="contained"

@@ -95,7 +95,13 @@ export const HeadToHeadCard = () => {
       />
       <CardContent>
         <Grid container spacing={1}>
-          <Grid size={{ xs: 4 }} display="flex" justifyContent={"start"}>
+          <Grid
+            size={{ xs: 4 }}
+            sx={{
+              display: "flex",
+              justifyContent: "start",
+            }}
+          >
             <PlayerAvatar
               connectCode={user.connectCode}
               characterId={user.characterId}
@@ -103,7 +109,13 @@ export const HeadToHeadCard = () => {
               rank={liveRanks[user.connectCode]}
             />
           </Grid>
-          <Grid size={{ xs: 4 }} display="flex" justifyContent={"center"}>
+          <Grid
+            size={{ xs: 4 }}
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
             <HeadToHeadScore
               winCount={opponentStats?.overallStat.winCount ?? 0}
               winColor={PLAYER_ONE_COLOR}
@@ -111,7 +123,13 @@ export const HeadToHeadCard = () => {
               lossColor={PLAYER_TWO_COLOR}
             />
           </Grid>
-          <Grid size={{ xs: 4 }} display="flex" justifyContent={"end"}>
+          <Grid
+            size={{ xs: 4 }}
+            sx={{
+              display: "flex",
+              justifyContent: "end",
+            }}
+          >
             <PlayerAvatar
               connectCode={opponent.connectCode}
               characterId={opponent.characterId}
@@ -233,8 +251,10 @@ export const HeadToHeadCard = () => {
                   <Grid size={{ xs: 12 }}>
                     <Typography
                       variant="subtitle1"
-                      color="text.primary"
-                      sx={{ mt: 1 }}
+                      sx={{
+                        color: "text.primary",
+                        mt: 1,
+                      }}
                     >
                       Recent Games
                     </Typography>

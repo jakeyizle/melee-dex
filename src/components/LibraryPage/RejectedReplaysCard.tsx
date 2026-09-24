@@ -94,11 +94,21 @@ export const RejectedReplaysCard = () => {
                 {count}
               </Typography>
               <Box>
-                <Typography variant="body2" color="text.primary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.primary",
+                  }}
+                >
                   {REASON_LABELS[reason] ?? reason}
                 </Typography>
                 {REASON_NOTES[reason] && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {REASON_NOTES[reason]}
                   </Typography>
                 )}
