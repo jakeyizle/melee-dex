@@ -13,6 +13,7 @@ Read the root `CLAUDE.md` first for commands and the overall data flow.
 - `electron/worker/` — `replayParser.ts` (the worker entry) and `protocol.ts` (the message contract).
 - `electron/main/replayLoadManager.ts` — the singleton `ReplayLoadManager`, owning both the bulk
   import and the live watcher.
+- `electron/main/rankService.ts` — the slippi.gg rank lookup. See below.
 - `electron/preload/index.ts` — exposes the bridge as `window.ipcRenderer`.
 
 ### Parser workers
@@ -53,10 +54,44 @@ work, so dispatching to it on the ack would splice a batch off the queue and los
    the file**, and carries its `replayName` — a rejected live game (a CPU match, a parse failure)
    stores nothing, and announcing it would make the renderer re-count its previous replay.
 
+### Rank lookups
+
+The `.slp` format carries **no rank** — not in the game-start header, not in the metadata, not
+anywhere in the bytes. It names only which queue the game was in, which is already `Replay.mode`.
+Current standing therefore comes from slippi.gg, over `POST https://internal.slippi.gg/graphql`,
+`getUser(connectCode:)` → `rankedNetplayProfile`. Verified against the live endpoint: it is public
+and unauthenticated, an unknown code answers HTTP 200 with `data.getUser: null`, and the sibling
+`getUsers(fbUids:)` is **not** public — it answers `UNAUTHORIZED`. Introspection is disabled.
+
+**Only current rank exists.** What either player was ranked at the time of a stored replay is not
+recorded locally or remotely, so there is nothing to backfill and no reason to ever fan out over
+the library.
+
+This is an undocumented internal endpoint — `internal.` in the hostname is Slippi saying it is not
+a contract — so the service is built to keep the traffic negligible and to stop the moment it is
+unwelcome. The constants live at the top of `rankService.ts`; the policy is: one request per
+connect code per TTL (30 min, 6 h for a miss), in-flight lookups coalesced, never a poll, never a
+bulk lookup, no retry, and a 429/403 — or a GraphQL `UNAUTHORIZED`/`FORBIDDEN`, or three
+consecutive failures — disables lookups for the rest of the session.
+
+**A GraphQL error is HTTP 200 with `data.getUser: null`, which is the same shape as a player who
+has no ranked profile.** Conflating them is how this becomes a misbehaving client: a refusal would
+read as "unranked", get cached for the negative TTL, leave the breaker untouched, and the app would
+carry on asking. So a non-empty `errors` array is a failure, never an answer — it is not cached, it
+feeds the breaker, and an auth-shaped code stops the session at once. `!response.ok` alone does not
+cover this, because the refusal never reaches the status line. A descriptive `User-Agent` names the app so the traffic can be identified, or blocked,
+deliberately. **Do not relax these without a reason.** A play session is ~10-20 requests.
+
+It lives in main, not the renderer, because the packaged renderer loads over `file://`, where a
+cross-origin fetch is CORS-blocked. Nothing in it throws: every failure is a `null`, which the card
+renders as no badge. Tier names are derived separately in `src/utils/rankUtils.ts`, which is pure,
+so the thresholds are testable without a network stub.
+
 ## IPC channels
 
 Renderer → main (`ipcMain.handle`): `get-app-version`, `check-for-updates`, `select-directory`,
-`begin-loading-replays` (returns whether an import started), `replays-inserted`.
+`begin-loading-replays` (returns whether an import started), `replays-inserted`,
+`get-rank-profile` (`{ connectCode }` → `RankProfile | null`, never rejects).
 
 Main → main renderer: `update-ready`, `update-replay-load-progress`, `live-replay-loaded`,
 `insert-parsed-replays`, `end-loading-replays`, `update-stats` (`{ replayName }`),
@@ -84,6 +119,14 @@ inside a utilityProcess and the module talks to it at import time, so the stub h
 to `process` **before** the module is imported, and `createRequire` is mocked to hand back the real
 `slippi-js`. The `.slp` files and the parsing are real — the two smallest in `testdata/`, so it
 stays fast.
+
+`test/unit/rankService.test.ts` covers the rank lookup with `fetch` stubbed: the caching, the
+in-flight coalescing, the negative cache, the eviction cap and every way the service gives up.
+There is deliberately **no** Playwright spec for it — a spec that depends on a live third-party
+endpoint is a flaky test plus real traffic on every CI run. For the same reason every
+`electron.launch` in `test/*.spec.ts` sets `MELEE_DEX_DISABLE_RANK_LOOKUPS=1`: those specs drive a
+real live game through the real app, so without it the suite would hit slippi.gg on every run. Keep
+it on any spec added later. The app never sets it.
 
 `test/live.spec.ts` covers the same path end to end for real: a `.slp` is copied into a temp replay
 directory while the app runs, and the assertion is that the dashboard swaps to the head-to-head

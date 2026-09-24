@@ -52,6 +52,7 @@ export const HeadToHeadCard = () => {
     userConnectCode,
     currentReplayInfo,
     recentReplays,
+    liveRanks,
   } = useReplayStore();
 
   if (!currentReplayInfo) return null;
@@ -99,6 +100,7 @@ export const HeadToHeadCard = () => {
               connectCode={user.connectCode}
               characterId={user.characterId}
               avatarBgColor={PLAYER_ONE_COLOR}
+              rank={liveRanks[user.connectCode]}
             />
           </Grid>
           <Grid size={{ xs: 4 }} display="flex" justifyContent={"center"}>
@@ -115,6 +117,7 @@ export const HeadToHeadCard = () => {
               characterId={opponent.characterId}
               isFlipped
               avatarBgColor={PLAYER_TWO_COLOR}
+              rank={liveRanks[opponent.connectCode]}
             />
           </Grid>
 

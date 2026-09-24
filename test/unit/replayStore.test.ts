@@ -552,3 +552,71 @@ describe("changing the replay directory", () => {
     expect(useReplayStore.getState().userConnectCode).toBe(USER);
   });
 });
+
+describe("rank lookups for the live game", () => {
+  /** The fire-and-forget lookup settles a few microtasks after the emit. */
+  const flush = async () => {
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+
+  const profile = (connectCode: string) => ({
+    connectCode,
+    ratingOrdinal: 1474.65,
+    ratingUpdateCount: 8,
+    wins: 6,
+    losses: 2,
+    dailyGlobalPlacement: null,
+    tier: "Gold 1",
+  });
+
+  it("asks main for both players once per game", async () => {
+    ipcRenderer.setInvokeResult("get-rank-profile", profile(OPPONENT));
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+    await flush();
+
+    const asked = ipcRenderer.invocations.filter(
+      (invocation) => invocation.channel === "get-rank-profile",
+    );
+    expect(asked.map((invocation) => invocation.args)).toEqual([
+      { connectCode: USER },
+      { connectCode: OPPONENT },
+    ]);
+  });
+
+  it("keys the answers by connect code", async () => {
+    ipcRenderer.setInvokeResult("get-rank-profile", profile(OPPONENT));
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+    await flush();
+
+    expect(Object.keys(useReplayStore.getState().liveRanks).sort()).toEqual(
+      [USER, OPPONENT].sort(),
+    );
+  });
+
+  // The endpoint is undocumented and allowed to fail. A live card that throws
+  // or blanks because a badge could not be fetched would be far worse than one
+  // with no badge.
+  it("leaves the live view intact when the lookup fails", async () => {
+    ipcRenderer.setInvokeResult("get-rank-profile", undefined);
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+    await flush();
+
+    expect(useReplayStore.getState().currentReplayInfo).not.toBeNull();
+    expect(useReplayStore.getState().liveRanks[USER]).toBeNull();
+  });
+
+  it("publishes the live view without waiting for the lookup", async () => {
+    // Never resolves: the card must already be on screen.
+    ipcRenderer.setInvokeResult(
+      "get-rank-profile",
+      new Promise(() => {}),
+    );
+
+    await ipcRenderer.emit("live-replay-loaded", liveGameArgs);
+
+    expect(useReplayStore.getState().currentLiveFileName).toBe("Game_Live.slp");
+  });
+});

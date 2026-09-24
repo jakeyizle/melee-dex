@@ -7,7 +7,7 @@ import { useReplayStore } from "@/replayStore";
 import { buildStats, getCurrentHeadToHeadStats } from "@/utils/statUtils";
 import { HeadToHeadCard } from "@/components/DashboardPage/LiveMatchDisplay/NewHeadToHeadCard";
 import { RecentGamesList } from "@/components/DashboardPage/LiveMatchDisplay/NewHeadToHeadCard/RecentGamesList";
-import { CurrentReplayInfo } from "@/types";
+import { CurrentReplayInfo, RankProfile } from "@/types";
 import { Replay } from "@/db/replays";
 
 /** Fox vs Marth on Battlefield, which is what `makeMatch` defaults produce. */
@@ -53,6 +53,7 @@ beforeEach(() => {
     newStatInfo: null,
     headToHeadStats: null,
     recentReplays: [],
+    liveRanks: {},
   });
 });
 
@@ -284,5 +285,72 @@ describe("RecentGamesList", () => {
     const { container } = rendered([]);
 
     expect(container.innerHTML).toBe("");
+  });
+});
+
+describe("HeadToHeadCard rank badges", () => {
+  const profile = (overrides: Partial<RankProfile> = {}): RankProfile => ({
+    connectCode: OPPONENT,
+    ratingOrdinal: 1474.65,
+    ratingUpdateCount: 8,
+    wins: 6,
+    losses: 2,
+    dailyGlobalPlacement: null,
+    tier: "Gold 1",
+    ...overrides,
+  });
+
+  it("shows each player's tier and rating once the lookup lands", () => {
+    startGame([]);
+    useReplayStore.setState({
+      liveRanks: {
+        [USER]: profile({ connectCode: USER, tier: "Diamond 2" }),
+        [OPPONENT]: profile(),
+      },
+    });
+    renderComponent(<HeadToHeadCard />);
+
+    expect(screen.getByText("Diamond 2 · 1475")).toBeDefined();
+    expect(screen.getByText("Gold 1 · 1475")).toBeDefined();
+  });
+
+  // Rank is the one thing on this card that comes from the network, so it is
+  // the one thing allowed to be missing. The card must still render.
+  it("renders the card without badges when the lookup has not landed", () => {
+    startGame([]);
+    renderComponent(<HeadToHeadCard />);
+
+    expect(screen.getByText(USER)).toBeDefined();
+    expect(screen.getByText(OPPONENT)).toBeDefined();
+    expect(screen.queryByText(/Gold|Diamond|Pending/)).toBeNull();
+  });
+
+  it("renders no badge for a player whose lookup failed", () => {
+    startGame([]);
+    useReplayStore.setState({
+      liveRanks: { [USER]: profile({ connectCode: USER }), [OPPONENT]: null },
+    });
+    renderComponent(<HeadToHeadCard />);
+
+    expect(screen.getAllByText(/Gold 1/)).toHaveLength(1);
+  });
+
+  // An unplaced profile reports the season's starting rating, which is not a
+  // number the player earned.
+  it("shows a pending profile without a rating", () => {
+    startGame([]);
+    useReplayStore.setState({
+      liveRanks: {
+        [OPPONENT]: profile({
+          tier: "Pending",
+          ratingOrdinal: 1100,
+          ratingUpdateCount: 0,
+        }),
+      },
+    });
+    renderComponent(<HeadToHeadCard />);
+
+    expect(screen.getByText("Pending")).toBeDefined();
+    expect(screen.queryByText(/1100/)).toBeNull();
   });
 });

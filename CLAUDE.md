@@ -119,11 +119,18 @@ one. Worker count is capped by memory, not cores — see `electron/CLAUDE.md`.
   each get their own matchId and are always game 1. A replay stored before this field existed has
   no `mode` at all — absent means unranked.
 - **Live replay** — the in-progress `.slp` the watcher sees before the game has a winner.
+- **Rank** — a player's ranked standing (Bronze 1 … Grandmaster, from a `ratingOrdinal`). It is
+  **not in the `.slp` file at all** and is fetched per connect code from slippi.gg; only *current*
+  rank exists, so it can never be attached to a stored replay. See "Rank lookups" in
+  `electron/CLAUDE.md` before touching it — the request policy there is deliberate.
 
 ## Gotchas
 
 - There is **no** Dolphin/console/relay connection — everything is driven by watching the replay
   directory for files.
+- The app makes exactly two kinds of outbound request: the updater, and the rank lookup in
+  `electron/main/rankService.ts`. Both are against servers that may be unreachable, and neither may
+  ever be fatal.
 - `electron-builder.json` still carries the `electron-vite-react` template's placeholder
   `appId: "YourAppID"`, as do the template comments (`// #298`). The template's other leftovers
   (`.vite.config.flat.txt`, `.playwright.config.txt`, the unused `ws` dependency) have been

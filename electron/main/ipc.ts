@@ -1,5 +1,6 @@
 import { ipcMain, dialog, app } from "electron";
 import { ReplayLoadManager } from "./replayLoadManager";
+import { getRankProfile, setRankServiceUserAgent } from "./rankService";
 import electronUpdater from "electron-updater";
 import log from "electron-log";
 const replayLoadManager = ReplayLoadManager.getInstance();
@@ -43,6 +44,20 @@ ipcMain.handle("check-for-updates", async (event) => {
     log.error("Update check failed", error);
   }
 });
+
+// rank
+// One lookup per connect code per TTL, cached and rate-limited in rankService.
+// It never throws: an unreachable endpoint is a missing badge, nothing more.
+setRankServiceUserAgent(
+  `melee-dex/${app.getVersion()} (+https://github.com/jakeyizle/melee-dex)`,
+);
+
+ipcMain.handle(
+  "get-rank-profile",
+  async (_event, args: { connectCode: string }) => {
+    return await getRankProfile(args.connectCode);
+  },
+);
 
 // settings
 ipcMain.handle("select-directory", async (event, arg) => {

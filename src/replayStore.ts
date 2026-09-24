@@ -17,6 +17,7 @@ import {
   FullStats,
   HeadToHeadStats,
   LiveReplayPlayers,
+  RankProfile,
 } from "@/types";
 import { selectAllReplayNames } from "@/db/replays";
 import {
@@ -60,6 +61,13 @@ type ReplayStore = {
   recentReplays: Replay[];
   userConnectCode: string;
   headToHeadStats: HeadToHeadStats | null;
+  /**
+   * Current ranked standing per connect code, for the game on screen. Keyed by
+   * code rather than kept in user/opponent slots so a fast opponent swap cannot
+   * land one player's rank beside the other's avatar. A code absent, or mapped
+   * to null, means no badge — the lookup is enrichment and is allowed to fail.
+   */
+  liveRanks: Record<string, RankProfile | null>;
 
   // Load progress
   isLoadingReplays: boolean;
@@ -93,6 +101,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
   recentReplays: [],
   userConnectCode: "",
   headToHeadStats: null,
+  liveRanks: {},
 
   isLoadingReplays: false,
   currentReplaysLoaded: 0,
@@ -155,6 +164,7 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
       currentLiveFileName: "",
       headToHeadStats: null,
       recentReplays: [],
+      liveRanks: {},
     });
   },
 
@@ -202,6 +212,31 @@ export const useReplayStore = create<ReplayStore>((set, get) => ({
       // previous opponent's games while this one's are being fetched.
       recentReplays: [],
     });
+
+    // Enrichment, and deliberately not awaited: the `.slp` carries no rank, so
+    // this is a network call, and a slow or unreachable endpoint must never
+    // hold up the live card. Both players are looked up together; main caches
+    // per connect code, so game 2 of a set costs no request at all.
+    void (async () => {
+      try {
+        const entries = await Promise.all(
+          players.map(async (player) => {
+            const profile: RankProfile | null = await window.ipcRenderer.invoke(
+              "get-rank-profile",
+              { connectCode: player.connectCode },
+            );
+            return [player.connectCode, profile ?? null] as const;
+          }),
+        );
+        // Replaced rather than merged: these are the ranks for the game on
+        // screen, and main holds the cache that makes re-fetching them cheap.
+        if (get().currentLiveFileName === filename) {
+          set({ liveRanks: Object.fromEntries(entries) });
+        }
+      } catch {
+        // A missing badge is the intended failure. Nothing to report.
+      }
+    })();
 
     // Queried, not held in the running stats: one scan costs the same whether
     // it answers for one opponent or all of them, and this happens once per

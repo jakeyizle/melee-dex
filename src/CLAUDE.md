@@ -42,6 +42,13 @@ outside React in `setupReplayStoreIpcListeners()` (called from `main.tsx`) and w
 `useReplayStore.setState`. Consumers currently destructure the whole store, so any field change
 re-renders them — match that pattern or introduce selectors deliberately, don't half-migrate.
 
+`liveRanks: Record<string, RankProfile | null>` holds the current ranked standing of the players in
+the game on screen, fetched from main over `get-rank-profile`. It is keyed by **connect code**, not
+by user/opponent slots, so a fast opponent swap cannot land one player's rank beside the other's
+avatar — a stale key is simply never read. The lookup is fired without being awaited and is guarded
+on `currentLiveFileName`, so a slow endpoint never delays the live card. See "Rank lookups" in
+`electron/CLAUDE.md` for why the request lives in main and how little of it there is.
+
 `newStatInfo: FullStats` holds the aggregated stats. The name is historical — the `statInfo`
 field it replaced is gone.
 
@@ -196,6 +203,13 @@ import. The live card is built in tiers, and the ordering is load-bearing:
   the most useful thing the app can say, so it must not depend on having a record.
 - **Tier 2** — character usage, this matchup, this stage, recent games — needs history and is
   absent without it.
+
+The rank badge beside each avatar is tier-1 **enrichment** and the only thing on the card that comes
+from the network rather than the replay. It is therefore the only thing allowed to be simply
+missing: `RankBadge` renders `null` without a profile, because an unreachable endpoint has to look
+like no badge rather than a broken card. A profile that has not played its placement sets reads
+`Pending` and shows no rating — it reports the season's starting 1100, which would otherwise render
+as a number the player had earned.
 
 Recent games are **queried per game**, not held in `FullStats`: a full cursor scan is ~16.6us per
 stored replay (330ms over 20,000, 830ms over 50,000) and bucketing every opponent in the same

@@ -87,3 +87,21 @@ export type HeadToHeadStats = {
   userCharacterUsages?: CharacterUsageStat[];
   opponentCharacterUsages?: CharacterUsageStat[];
 };
+
+/**
+ * A player's current ranked standing, fetched from slippi.gg rather than read
+ * from the replay — the `.slp` format carries no rank at all, only which queue
+ * the game was in. Current only: what either player was ranked at the time of a
+ * stored replay does not exist anywhere, so this can never be backfilled.
+ */
+export type RankProfile = {
+  connectCode: string;
+  ratingOrdinal: number;
+  /** Ranked sets counted so far. Under five, the tier is still `Pending`. */
+  ratingUpdateCount: number;
+  wins: number;
+  losses: number;
+  dailyGlobalPlacement: number | null;
+  /** Derived, not fetched. See `src/utils/rankUtils.ts`. */
+  tier: string;
+};

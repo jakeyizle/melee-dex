@@ -71,7 +71,12 @@ suite("what survives, and what a reset removes", () => {
     electronApp = await electron.launch({
       args: [".", "--no-sandbox", `--user-data-dir=${userDataDir}`],
       cwd: root,
-      env: { ...process.env, NODE_ENV: "development" },
+      env: {
+        ...process.env,
+        NODE_ENV: "development",
+        // No live traffic to slippi.gg from the test suite.
+        MELEE_DEX_DISABLE_RANK_LOOKUPS: "1",
+      },
     });
     page = await electronApp.firstWindow();
     await page.waitForLoadState("domcontentloaded");
