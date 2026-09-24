@@ -36,6 +36,11 @@ Prettier defaults, double quotes, semicolons, 2-space indent, trailing commas.
   since zustand keeps them in state. They assert on what a user can see, never on internals, and
   call `afterEach(cleanup)` explicitly because the suite does not use vitest globals.
 
+  Vitest clears every mock's recorded history before each test (`clearMocks` defaults to `true`),
+  so a mock's calls do **not** survive from module scope into a test. A test that needs to assert
+  on something recorded at import time has to snapshot it at import time —
+  `replayParser.test.ts` does this for the worker's `parentPort` handshake.
+
   Components worth testing are the ones that **decide** something: which card a route shows,
   whether a guard holds, what a control commits. The presentational leaves (`PaperDisplay`,
   `HeadToHeadScore`, `PlayerAvatar`, `GamesPlayedPaperDisplay`) are props-to-JSX and are

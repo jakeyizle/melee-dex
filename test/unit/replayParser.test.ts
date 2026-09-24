@@ -41,9 +41,17 @@ vi.mock("node:module", async (importOriginal) => {
 
 await import("../../electron/worker/replayParser");
 
-/** Whatever the module posted while it was being evaluated. */
+/**
+ * Whatever the module did while it was being evaluated, snapshotted here rather
+ * than read from the mocks inside a test: vitest clears every mock's recorded
+ * history before each test, so history from import time does not survive to be
+ * asserted on.
+ */
 const messagesPostedOnLoad = parentPort.postMessage.mock.calls.map(
   ([message]) => message,
+);
+const listenersAttachedOnLoad = parentPort.on.mock.calls.map(
+  ([channel, listener]) => ({ channel, listener }),
 );
 
 const TESTDATA = path.resolve(__dirname, "../../testdata");
@@ -60,9 +68,8 @@ const MISSING = { name: "Gone.slp", path: path.join(TESTDATA, "Gone.slp") };
 
 /** The listener the worker registered at import. */
 const handleMessage = () =>
-  parentPort.on.mock.calls.find(([channel]) => channel === "message")![1] as (
-    event: { data: unknown },
-  ) => void;
+  listenersAttachedOnLoad.find(({ channel }) => channel === "message")!
+    .listener as (event: { data: unknown }) => void;
 
 const parse = (files: ReplayFileInfo[]): ParseResults => {
   parentPort.postMessage.mockClear();
@@ -82,7 +89,9 @@ describe("the worker handshake", () => {
   });
 
   it("attaches its listener before saying it is ready", () => {
-    expect(parentPort.on).toHaveBeenCalledWith("message", expect.any(Function));
+    expect(listenersAttachedOnLoad).toEqual([
+      { channel: "message", listener: expect.any(Function) },
+    ]);
     // Nothing else is posted on load, so a batch arriving the instant "ready"
     // is seen already has somewhere to land.
     expect(messagesPostedOnLoad).toHaveLength(1);
