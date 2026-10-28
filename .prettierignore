@@ -1,5 +1,5 @@
-# Generated output. `coverage/` is committed, so without this a format run
-# would rewrite every generated report alongside the source.
+# Generated output. `coverage/` is gitignored but still produced locally by
+# `npm run test:coverage`, so keep format runs away from it.
 coverage
 dist
 dist-electron

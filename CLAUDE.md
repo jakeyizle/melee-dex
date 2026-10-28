@@ -26,8 +26,8 @@ Tailwind or add tooling configs unless asked.
 double quotes, semicolons, 2-space indent, trailing commas — which is also what VS Code
 format-on-save applies. `.prettierrc` sets only `endOfLine: "auto"`, because `core.autocrlf` is on
 and a checkout produces CRLF, which Prettier's `lf` default would otherwise flag on every file in
-the repo. `.prettierignore` covers the generated output, `coverage/` included, since that one is
-committed.
+the repo. `.prettierignore` covers the generated output, `coverage/` included (gitignored, but
+produced locally by `npm run test:coverage`).
 
 ## Tests
 
