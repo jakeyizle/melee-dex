@@ -27,3 +27,6 @@ release
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Test coverage output
+coverage
